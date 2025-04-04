@@ -82,6 +82,7 @@ linters-settings:
         exclude:
           - "**/testabilities/**"
           - "**/tester/**"
+          - "./release/"
 
 issues:
   # List of regexps of issue texts to exclude, empty list by default.
@@ -158,6 +159,7 @@ issues:
     - .github
     - .make
     - dist
+    - release
 
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0

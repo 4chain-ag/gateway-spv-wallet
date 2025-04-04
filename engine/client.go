@@ -8,7 +8,7 @@ import (
 	"github.com/bitcoin-sv/go-paymail/server"
 	"github.com/bitcoin-sv/spv-wallet/config"
 	"github.com/bitcoin-sv/spv-wallet/engine/chain"
-	"github.com/bitcoin-sv/spv-wallet/engine/chain/models"
+	chainmodels "github.com/bitcoin-sv/spv-wallet/engine/chain/models"
 	"github.com/bitcoin-sv/spv-wallet/engine/cluster"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
 	"github.com/bitcoin-sv/spv-wallet/engine/logging"
@@ -17,6 +17,7 @@ import (
 	paymailclient "github.com/bitcoin-sv/spv-wallet/engine/paymail"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/taskmanager"
+	"github.com/bitcoin-sv/spv-wallet/engine/tokens"
 	"github.com/bitcoin-sv/spv-wallet/engine/v2/addresses"
 	"github.com/bitcoin-sv/spv-wallet/engine/v2/data"
 	"github.com/bitcoin-sv/spv-wallet/engine/v2/database/repository"
@@ -70,6 +71,9 @@ type (
 		txSync       *txsync.Service
 		data         *data.Service
 		config       *config.AppConfig
+
+		// tokens
+		tokenOverlayClient tokens.TokenOverlayClient // Token Overlay Client for validating token transactions
 	}
 
 	// cacheStoreOptions holds the cache configuration and client
@@ -204,6 +208,10 @@ func NewClient(ctx context.Context, opts ...ClientOps) (ClientInterface, error) 
 	}
 
 	if err = client.loadTransactionOutlinesService(); err != nil {
+		return nil, err
+	}
+
+	if err = client.loadTokenOverlayClient(); err != nil {
 		return nil, err
 	}
 
@@ -385,4 +393,8 @@ func (c *Client) OperationsService() *operations.Service {
 // TxSyncService will return the transaction sync service
 func (c *Client) TxSyncService() *txsync.Service {
 	return c.options.txSync
+}
+
+func (c *Client) Tokens() tokens.TokenOverlayClient {
+	return c.options.tokenOverlayClient
 }

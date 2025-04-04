@@ -34,6 +34,7 @@ func GetDefaultAppConfig() *AppConfig {
 		Metrics:              getMetricsDefaults(),
 		ExperimentalFeatures: getExperimentalFeaturesConfig(),
 		CustomFeeUnit:        nil,
+		TokenOverlay:         getTokenOverlayConfig(),
 	}
 }
 
@@ -69,15 +70,15 @@ func getDbDefaults() *DbConfig {
 	return &DbConfig{
 		Datastore: &DatastoreConfig{
 			Debug:       false,
-			Engine:      "sqlite",
+			Engine:      "postgresql",
 			TablePrefix: "xapi",
 		},
 		SQL: &datastore.SQLConfig{
 			Driver:             "postgresql",
 			ExistingConnection: nil,
 			Host:               "localhost",
-			Name:               "xapi",
-			Password:           "",
+			Name:               "postgres",
+			Password:           "postgres",
 			Port:               "5432",
 			Replica:            false,
 			TimeZone:           "UTC",
@@ -125,7 +126,7 @@ func getNotificationDefaults() *NotificationsConfig {
 func getPaymailDefaults() *PaymailConfig {
 	return &PaymailConfig{
 		Beef: &BeefConfig{
-			UseBeef:                                true,
+			UseBeef:                                false,
 			BlockHeadersServiceHeaderValidationURL: "http://localhost:8080/api/v1/chain/merkleroot/verify",
 			BlockHeadersServiceAuthToken:           "mQZQ6WmxURxWz5ch", // #nosec G101
 		},
@@ -168,5 +169,11 @@ func getExperimentalFeaturesConfig() *ExperimentalConfig {
 	return &ExperimentalConfig{
 		PikeContactsEnabled: false,
 		PikePaymentEnabled:  false,
+	}
+}
+
+func getTokenOverlayConfig() *TokenOverlayConfig {
+	return &TokenOverlayConfig{
+		URL: "http://localhost:3091",
 	}
 }

@@ -252,7 +252,10 @@ func (m *DraftTransaction) createTransactionHex(ctx context.Context) (err error)
 	}
 
 	// Create the final hex (without signatures)
-	m.Hex = tx.String()
+	m.Hex, err = tx.EFHex()
+	if err != nil {
+		return
+	}
 
 	return
 }
@@ -329,7 +332,7 @@ func (m *DraftTransaction) prepareSeparateUtxos(ctx context.Context, opts []Mode
 
 	// Reserve and Get utxos for the transaction
 	var reservedUtxos []*Utxo
-	//TODO: Fixme in new transaction-flow
+	// TODO: Fixme in new transaction-flow
 	feePerByte := float64(m.Configuration.FeeUnit.Satoshis) / float64(m.Configuration.FeeUnit.Bytes)
 
 	reserveSatoshis := satoshisNeeded + m.estimateFee(m.Configuration.FeeUnit, 0)
@@ -458,8 +461,9 @@ func (m *DraftTransaction) processUtxos(ctx context.Context, utxos []*Utxo) erro
 	opts := m.GetOptions(false)
 	for _, utxo := range utxos {
 		lockingScript := utils.GetDestinationLockingScript(utxo.ScriptPubKey)
+		address := utils.GetAddressFromScript(lockingScript)
 		destination, err := getDestinationWithCache(
-			ctx, m.Client(), "", "", lockingScript, opts...,
+			ctx, m.Client(), "", address, lockingScript, opts...,
 		)
 		if err != nil {
 			return err
@@ -467,6 +471,10 @@ func (m *DraftTransaction) processUtxos(ctx context.Context, utxos []*Utxo) erro
 		if destination == nil {
 			return spverrors.ErrCouldNotFindDestination
 		}
+
+		// (!) replace destination lockingScript with actual UTXO lockingScript (may contain a token)
+		destination.LockingScript = lockingScript
+
 		m.Configuration.Inputs = append(
 			m.Configuration.Inputs, &TransactionInput{
 				Utxo:        *utxo,

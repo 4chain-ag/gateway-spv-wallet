@@ -58,7 +58,7 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 		return transaction, nil
 	}
 
-	if _isTokenTransaction(transaction.parsedTx) {
+	if _isTokenTransaction(strategy.SDKTx) {
 		logger.Info().Str("strategy", "outgoing").Msg("Token transaction FOUND")
 		err = c.Tokens().VerifyAndSaveTokenTransfer(ctx, transaction.Hex)
 		// TODO: should we ignore the error and broadcast anyway if the receiver accepted?

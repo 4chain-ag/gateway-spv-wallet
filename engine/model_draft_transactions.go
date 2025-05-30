@@ -282,6 +282,12 @@ func (m *DraftTransaction) calculateAndSetFee(ctx context.Context, satoshisReser
 	}
 
 	if satoshisReserved < satoshisNeeded+fee {
+		m.client.Logger().Error().
+			Err(spverrors.ErrNotEnoughUtxos).
+			Uint64("reserved", satoshisReserved).
+			Uint64("needed", satoshisNeeded).
+			Uint64("computed fee", fee).
+			Msg("")
 		return spverrors.ErrNotEnoughUtxos
 	}
 

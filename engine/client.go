@@ -2,8 +2,9 @@ package engine
 
 import (
 	"context"
-	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"time"
+
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 
 	"github.com/bitcoin-sv/go-paymail"
 	"github.com/bitcoin-sv/go-paymail/server"

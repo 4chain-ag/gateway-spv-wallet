@@ -3,8 +3,9 @@ package engine
 import (
 	"context"
 	"database/sql"
-	"github.com/bitcoin-sv/spv-wallet/config"
 	"testing"
+
+	"github.com/bitcoin-sv/spv-wallet/config"
 
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"

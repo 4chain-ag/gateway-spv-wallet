@@ -7,9 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"strings"
 	"time"
+
+	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 
 	"github.com/bitcoin-sv/go-paymail"
 	"github.com/bitcoin-sv/go-sdk/script"

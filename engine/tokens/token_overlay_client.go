@@ -42,7 +42,7 @@ func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txH
 
 	switch resp.StatusCode {
 	case 201:
-		c.log.Info().Ctx(ctx).Msg("Token Transfer successfuly verfied and saved in overlay")
+		c.log.Info().Ctx(ctx).Msg("Token Transfer successfully verfied and saved in overlay")
 	case 204:
 		c.log.Warn().Ctx(ctx).Msg("Token Transfer already verfied and saved in overlay, probably by the receiver")
 	default:

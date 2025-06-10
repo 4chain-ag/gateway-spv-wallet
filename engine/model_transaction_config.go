@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
-
 	"github.com/bitcoin-sv/go-paymail"
 	"github.com/bitcoin-sv/go-sdk/script"
 	"github.com/bitcoin-sv/go-sdk/transaction/template/p2pkh"

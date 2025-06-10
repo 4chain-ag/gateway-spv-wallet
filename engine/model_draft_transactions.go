@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
-
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"github.com/bitcoin-sv/go-paymail"
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
@@ -19,6 +17,7 @@ import (
 	"github.com/bitcoin-sv/go-sdk/transaction/template/p2pkh"
 	"github.com/bitcoin-sv/spv-wallet/conv"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"
 	"github.com/bitcoin-sv/spv-wallet/models/bsv"

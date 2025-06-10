@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
+	"github.com/bitcoin-sv/spv-wallet/config"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
 	"github.com/bitcoin-sv/spv-wallet/engine/taskmanager"
 	"github.com/bitcoin-sv/spv-wallet/engine/tester"
@@ -59,6 +60,14 @@ func DefaultClientOpts() []ClientOps {
 		WithTaskqConfig(tqc),
 		WithSQLite(tester.SQLiteTestConfig()),
 		WithCustomFeeUnit(mockFeeUnit),
+		WithAppConfig(&config.AppConfig{
+			TokenOverlay: &config.TokenOverlayConfig{
+				URL: "http://localhost:3091",
+			},
+			Gateway: &config.GatewayConfig{
+				URL: "http://localhost:8090",
+			},
+		}),
 	)
 
 	return opts

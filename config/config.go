@@ -64,6 +64,8 @@ type AppConfig struct {
 	CustomFeeUnit *FeeUnitConfig `json:"custom_fee_unit" mapstructure:"custom_fee_unit"`
 	// TokenOverlay is a config for Token Overlay Service for token transactions validation.
 	TokenOverlay *TokenOverlayConfig `json:"token_overlay" mapstructure:"token_overlay"`
+	// GatewayConfig is a config for Gateway Backend Service for retrieving stablecoin rules information.
+	Gateway *GatewayConfig `json:"gateway" mapstructure:"gateway"`
 }
 
 // AuthenticationConfig is the configuration for Authentication
@@ -248,5 +250,11 @@ type ExperimentalConfig struct {
 // TokenOverlayConfig is a config for Token Overlay Service for token transactions validation.
 type TokenOverlayConfig struct {
 	// URL is a URL for Token Overlay Service.
+	URL string `json:"url" mapstructure:"url"`
+}
+
+// GatewayConfig is a config for Gateway Backend Service for retrieving stablecoin rules information.
+type GatewayConfig struct {
+	// URL is a URL for Gateway Backend Service.
 	URL string `json:"url" mapstructure:"url"`
 }

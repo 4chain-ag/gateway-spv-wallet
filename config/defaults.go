@@ -35,6 +35,7 @@ func GetDefaultAppConfig() *AppConfig {
 		ExperimentalFeatures: getExperimentalFeaturesConfig(),
 		CustomFeeUnit:        nil,
 		TokenOverlay:         getTokenOverlayConfig(),
+		Gateway:              getGatewayConfig(),
 	}
 }
 
@@ -175,5 +176,11 @@ func getExperimentalFeaturesConfig() *ExperimentalConfig {
 func getTokenOverlayConfig() *TokenOverlayConfig {
 	return &TokenOverlayConfig{
 		URL: "http://localhost:3091",
+	}
+}
+
+func getGatewayConfig() *GatewayConfig {
+	return &GatewayConfig{
+		URL: "http://localhost:8090",
 	}
 }

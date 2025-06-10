@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"net/http"
 
 	"github.com/bitcoin-sv/go-paymail"
@@ -204,4 +205,5 @@ type ClientInterface interface {
 	FeeUnit() bsv.FeeUnit
 	V2
 	Tokens() tokens.TokenOverlayClient
+	GatewayClient() gateway.Client
 }

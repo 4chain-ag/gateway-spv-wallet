@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"strings"
 	"time"
 
@@ -331,6 +332,15 @@ func (t *TransactionOutput) processScriptOutput() (err error) {
 	)
 
 	return nil
+}
+
+func (t *TransactionOutput) findTokenInscription() ([]byte, error) {
+	outputScript, err := script.NewFromHex(t.Script)
+	if err != nil {
+		return nil, err
+	}
+
+	return bsv21.FindInscription(outputScript)
 }
 
 // processOpReturnOutput will process an op_return output

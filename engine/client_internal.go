@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 
 	paymailclient "github.com/bitcoin-sv/go-paymail"
 	paymailserver "github.com/bitcoin-sv/go-paymail/server"
@@ -342,5 +343,15 @@ func (c *Client) loadTokenOverlayClient() error {
 	}
 
 	c.options.tokenOverlayClient = tc
+	return nil
+}
+
+func (c *Client) loadGatewayClient() error {
+	gc, err := gateway.NewGatewayClient(c.Logger(), c.options.config.Gateway.URL, c.options.httpClient)
+	if err != nil {
+		return spverrors.Wrapf(err, "failed to init gateway client")
+	}
+
+	c.options.gatewayClient = gc
 	return nil
 }

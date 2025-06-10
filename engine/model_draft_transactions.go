@@ -8,6 +8,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
+
+	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"github.com/bitcoin-sv/go-paymail"
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
 	ec "github.com/bitcoin-sv/go-sdk/primitives/ec"
@@ -188,9 +191,60 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 			m.Configuration.Outputs = append(m.Configuration.Outputs, output)
 		}
 	} else {
+		// check to see if there is a stablecoin token if it is we need to apply fee to the issuer
+		if len(m.Configuration.Outputs) > 0 {
+			firstOutput := m.Configuration.Outputs[0]
+
+			inscription, err := firstOutput.findTokenInscription()
+			if err != nil {
+				return err
+			}
+
+			if inscription != nil {
+				// at this point txID and vout is not important as we care only about the Value
+				inscriptionData, err := bsv21.NewFromInscription("id", 0, inscription)
+				if err != nil {
+					return err
+				}
+
+				// ask issuer about rules and address
+				rules, err := c.GatewayClient().GetStablecoinRules(inscriptionData.ID)
+				if err != nil {
+					return err
+				}
+
+				// calculate fee and return the issuer address
+				feeIssuer, feeAmount := m.getApplicableFee(rules.Fees, inscriptionData.Amount)
+				if feeAmount > 0 {
+					if inscriptionData.Amount <= feeAmount {
+						return errors.New("fee will cover all of the transfer")
+					}
+
+					sendFeeScript, err := bsv21.NewBsv21Transfer(rules.TokenId, feeAmount)
+					if err != nil {
+						return err
+					}
+
+					feeOutput := &TransactionOutput{
+						Satoshis: 1,
+						Script:   sendFeeScript.String(),
+						To:       feeIssuer,
+					}
+
+					// add fee for the issuer
+					m.Configuration.Outputs = append(m.Configuration.Outputs, feeOutput)
+					// change original script to have original amount - fee
+					modifiedOriginalScript, err := bsv21.NewBsv21Transfer(rules.TokenId, inscriptionData.Amount-feeAmount)
+					if err != nil {
+						return err
+					}
+					firstOutput.Script = modifiedOriginalScript.String()
+				}
+			}
+		}
+
 		// Loop all outputs and process
 		for index := range m.Configuration.Outputs {
-
 			// Start the output script slice
 			if m.Configuration.Outputs[index].Scripts == nil {
 				m.Configuration.Outputs[index].Scripts = make([]*ScriptOutput, 0)
@@ -206,15 +260,27 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 	return nil
 }
 
+// getApplicableFee will return an issuer to whom return a fee and the fee amount
+func (m *DraftTransaction) getApplicableFee(fees []*gateway.StablecoinFee, transactionAmount uint64) (string, uint64) {
+	for _, fee := range fees {
+		if transactionAmount >= fee.From && transactionAmount < fee.To {
+			if fee.Type == "fixed" {
+				return fee.CommissionRecipient, uint64(fee.Value)
+			}
+			// TODO: think how to calculate the percentage fee
+			return fee.CommissionRecipient, uint64(math.Floor(float64(transactionAmount) * fee.Value))
+		}
+	}
+
+	return "", 0
+}
+
 // createTransactionHex will create the transaction with the given inputs and outputs
 func (m *DraftTransaction) createTransactionHex(ctx context.Context) (err error) {
 	// Check that we have outputs
 	if len(m.Configuration.Outputs) == 0 && m.Configuration.SendAllTo == nil {
 		return spverrors.ErrMissingTransactionOutputs
 	}
-
-	// Get the total satoshis needed to make this transaction
-	satoshisNeeded := m.getTotalSatoshis()
 
 	// Set opts
 	opts := m.GetOptions(false)
@@ -224,6 +290,9 @@ func (m *DraftTransaction) createTransactionHex(ctx context.Context) (err error)
 	if err = m.processConfigOutputs(ctx); err != nil {
 		return
 	}
+
+	// Get the total satoshis needed to make this transaction
+	satoshisNeeded := m.getTotalSatoshis()
 
 	inputUtxos, satoshisReserved, err := m.prepareUtxos(ctx, opts, satoshisNeeded)
 	if err != nil {

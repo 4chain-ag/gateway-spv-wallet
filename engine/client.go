@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"time"
 
 	"github.com/bitcoin-sv/go-paymail"
@@ -74,6 +75,9 @@ type (
 
 		// tokens
 		tokenOverlayClient tokens.TokenOverlayClient // Token Overlay Client for validating token transactions
+
+		// gateway
+		gatewayClient gateway.Client // Gateway Client for retrieving stablecoin rules
 	}
 
 	// cacheStoreOptions holds the cache configuration and client
@@ -212,6 +216,10 @@ func NewClient(ctx context.Context, opts ...ClientOps) (ClientInterface, error) 
 	}
 
 	if err = client.loadTokenOverlayClient(); err != nil {
+		return nil, err
+	}
+
+	if err = client.loadGatewayClient(); err != nil {
 		return nil, err
 	}
 
@@ -397,4 +405,8 @@ func (c *Client) TxSyncService() *txsync.Service {
 
 func (c *Client) Tokens() tokens.TokenOverlayClient {
 	return c.options.tokenOverlayClient
+}
+
+func (c *Client) GatewayClient() gateway.Client {
+	return c.options.gatewayClient
 }

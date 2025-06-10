@@ -131,3 +131,6 @@ experimental_features:
 
 token_overlay:
   url: "http://localhost:3091"
+
+gateway:
+  url: "http://localhost:8090"

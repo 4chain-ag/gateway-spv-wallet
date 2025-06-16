@@ -192,6 +192,8 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 	} else {
 		// check to see if there is a stablecoin token if it is we need to apply fee to the issuer
 		if len(m.Configuration.Outputs) > 0 {
+			// we are using the first output because if the transaction contains stablecoin
+			// its first output will ALWAYS include transaction of tokens to the receiver
 			firstOutput := m.Configuration.Outputs[0]
 
 			inscription, err := firstOutput.findTokenInscription()

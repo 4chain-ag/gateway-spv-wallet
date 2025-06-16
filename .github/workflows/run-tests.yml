@@ -34,8 +34,16 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      - name: Configure git for private modules
+        run: |
+          git config --global url."https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Write go list
         run: go list -json -m all > go.list
+        env:
+          GOPRIVATE: github.com/4chain-AG/*
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Ask Nancy
         uses: sonatype-nexus-community/nancy-github-action@v1.0.3
         continue-on-error: true

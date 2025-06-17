@@ -9,6 +9,7 @@ import (
 	chainmodels "github.com/bitcoin-sv/spv-wallet/engine/chain/models"
 	"github.com/bitcoin-sv/spv-wallet/engine/cluster"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"github.com/bitcoin-sv/spv-wallet/engine/metrics"
 	"github.com/bitcoin-sv/spv-wallet/engine/notifications"
 	paymailclient "github.com/bitcoin-sv/spv-wallet/engine/paymail"
@@ -204,4 +205,5 @@ type ClientInterface interface {
 	FeeUnit() bsv.FeeUnit
 	V2
 	Tokens() tokens.TokenOverlayClient
+	GatewayClient() gateway.Client
 }

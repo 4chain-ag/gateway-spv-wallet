@@ -34,8 +34,16 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      - name: Configure git for private modules
+        run: |
+          git config --global url."https://user:${PAT_TOKEN}@github.com".insteadOf "https://github.com"
+        env:
+          PAT_TOKEN: ${{ secrets.PAT }}
       - name: Write go list
         run: go list -json -m all > go.list
+        env:
+          GOPRIVATE: github.com/4chain-AG/*
+          PAT_TOKEN: ${{ secrets.PAT }}
       - name: Ask Nancy
         uses: sonatype-nexus-community/nancy-github-action@v1.0.3
         continue-on-error: true
@@ -47,11 +55,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+      - name: Configure git for private modules
+        run: |
+          git config --global url."https://user:${PAT_TOKEN}@github.com".insteadOf "https://github.com"
+        env:
+          PAT_TOKEN: ${{ secrets.PAT }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: ${{ env.LINT_VERSION }}
           args: --config=./.golangci-lint.yml
+        env:
+          GOPRIVATE: github.com/4chain-AG/*
   style-lint:
     name: Lint for style lint errors
     runs-on: ubuntu-latest
@@ -89,6 +104,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Configure git for private modules
+        run: |
+          git config --global url."https://user:${PAT_TOKEN}@github.com".insteadOf "https://github.com"
+        env:
+          PAT_TOKEN: ${{ secrets.PAT }}
+
       - name: Set up gotestfmt
         uses: GoTestTools/gotestfmt-action@v2
         with:
@@ -97,6 +118,8 @@ jobs:
 
       - name: Run tests
         run: make test-all-db-ci
+        env:
+          GOPRIVATE: github.com/4chain-AG/*
 
       - name: Update code coverage
         uses: codecov/codecov-action@v5.4.0

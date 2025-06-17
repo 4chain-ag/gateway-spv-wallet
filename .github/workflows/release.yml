@@ -23,4 +23,3 @@ jobs:
       release_goreleaser_config: ./release/.goreleaser-linux.yml
     secrets:
       GH_PAT: ${{ secrets.PAT }}
-

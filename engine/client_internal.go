@@ -8,6 +8,7 @@ import (
 	"github.com/bitcoin-sv/spv-wallet/engine/chain"
 	"github.com/bitcoin-sv/spv-wallet/engine/cluster"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
+	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"github.com/bitcoin-sv/spv-wallet/engine/notifications"
 	"github.com/bitcoin-sv/spv-wallet/engine/paymail"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
@@ -342,5 +343,15 @@ func (c *Client) loadTokenOverlayClient() error {
 	}
 
 	c.options.tokenOverlayClient = tc
+	return nil
+}
+
+func (c *Client) loadGatewayClient() error {
+	gc, err := gateway.NewGatewayClient(c.Logger(), c.options.config.Gateway.URL, c.options.httpClient)
+	if err != nil {
+		return spverrors.Wrapf(err, "failed to init gateway client")
+	}
+
+	c.options.gatewayClient = gc
 	return nil
 }

@@ -26,7 +26,7 @@ jobs:
           repository: 4chain-ag/gateway-helm
           token: ${{ secrets.GH_TOKEN }}
           path: target-repo
- 
+
       - name: Commit and push changes to helm repo
         run: |
             VERSION_NUMBER=$(git describe --tags `git rev-list --tags --max-count=1`)

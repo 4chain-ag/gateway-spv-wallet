@@ -72,6 +72,10 @@ type TransactionOutput struct {
 	Scripts      []*ScriptOutput `json:"scripts" toml:"scripts" yaml:"scripts"`                                // Add script outputs
 	To           string          `json:"to,omitempty" toml:"to" yaml:"to"`                                     // To address, paymail, handle
 	UseForChange bool            `json:"use_for_change,omitempty" toml:"use_for_change" yaml:"use_for_change"` // if set, no change destinations will be created, but all outputs flagged will get the change
+
+	Token       bool `json:"token"`
+	TokenChange bool `json:"token_change"`
+	TokenFee    bool `json:"token_fee"`
 }
 
 // PaymailPayloadFormat is the format of the paymail payload
@@ -341,6 +345,11 @@ func (t *TransactionOutput) findTokenInscription() ([]byte, error) {
 	}
 
 	return bsv21.FindInscription(outputScript)
+}
+
+func (t *TransactionOutput) isToken() bool {
+	iscription, _ := t.findTokenInscription()
+	return iscription != nil
 }
 
 // processOpReturnOutput will process an op_return output

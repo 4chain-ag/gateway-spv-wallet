@@ -190,7 +190,24 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 			m.Configuration.Outputs = append(m.Configuration.Outputs, output)
 		}
 	} else {
-		// check to see if there is a stablecoin token if it is we need to apply fee to the issuer
+		// check if the transaction involves a stablecoin token
+		// assumptions:
+		// - single output at this point indicates a token transfer without change
+		// - two outputs at this point indicate a token transfer with a change output
+		// note: this logic should be handled on the client side
+
+		outs := m.Configuration.Outputs
+
+		// mark token outputs (only first two)
+		if len(outs) > 0 && outs[0].isToken() {
+			outs[0].Token = true
+		}
+
+		if len(outs) > 1 && outs[1].isToken() {
+			outs[1].Token = true
+			outs[1].TokenChange = true
+		}
+
 		if len(m.Configuration.Outputs) > 0 {
 			// we are using the first output because if the transaction contains stablecoin
 			// its first output will ALWAYS include transaction of tokens to the receiver
@@ -230,6 +247,10 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 						Satoshis: 1,
 						Script:   sendFeeScript.String(),
 						To:       feeIssuer,
+
+						// to mozna bylo dodać w klientach
+						Token:    true,
+						TokenFee: true,
 					}
 
 					// add fee for the issuer

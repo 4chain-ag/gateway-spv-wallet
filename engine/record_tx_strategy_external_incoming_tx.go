@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
-	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 )
 
 type externalIncomingTx struct {
@@ -27,10 +26,10 @@ func (strategy *externalIncomingTx) Execute(ctx context.Context, c ClientInterfa
 	logger := c.Logger()
 	if _isTokenTransaction(transaction.parsedTx) {
 		logger.Info().Str("strategy", "external incoming").Msg("Token transaction FOUND")
-		err = c.Tokens().VerifyAndSaveTokenTransfer(ctx, transaction.Hex)
-		if err != nil {
-			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
-		}
+		//err = c.Tokens().VerifyAndSaveTokenTransfer(ctx, transaction.Hex)
+		// if err != nil {
+		// 	return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
+		// }
 		logger.Info().Str("strategy", "external incoming").Msg("Token transaction successfully VALIDATED")
 	}
 

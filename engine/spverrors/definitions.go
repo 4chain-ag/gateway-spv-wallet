@@ -479,3 +479,6 @@ var ErrDataNotFound = models.SPVError{Message: "data not found", StatusCode: 404
 
 // ErrInvalidDataID is when data id is invalid
 var ErrInvalidDataID = models.SPVError{Message: "invalid data id", StatusCode: 400, Code: "error-invalid-data-id"}
+
+// ErrInvalidTransferNoTransfer is when data id is invalid
+var ErrInvalidTransferNoTransfer = models.SPVError{Message: "invalid transfer data, no transfer output", StatusCode: 400, Code: "error-invalid-transfer-data"}

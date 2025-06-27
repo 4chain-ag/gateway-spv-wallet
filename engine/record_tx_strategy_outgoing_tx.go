@@ -60,7 +60,15 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 
 	if _isTokenTransaction(strategy.SDKTx) {
 		logger.Info().Str("strategy", "outgoing").Msg("Token transaction FOUND")
-		err = c.Tokens().VerifyAndSaveTokenTransfer(ctx, transaction.Hex)
+
+		tm, err := buildTransferMessage(transaction)
+		if err != nil {
+			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
+
+		logger.Info().Str("strategy", "outgoing").Any("transfer-data", tm).Msg("")
+
+		err = c.Tokens().VerifyAndSaveTokenTransfer(ctx, tm)
 		// TODO: should we ignore the error and broadcast anyway if the receiver accepted?
 		if err != nil {
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)

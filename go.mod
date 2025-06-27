@@ -10,7 +10,7 @@ go 1.24.0
 replace github.com/bitcoin-sv/spv-wallet/models => ./models
 
 require (
-	github.com/4chain-AG/gateway-overlay v0.0.0
+	github.com/4chain-AG/gateway-overlay v0.7.0-rc3
 	github.com/99designs/gqlgen v0.17.66
 	github.com/bitcoin-sv/go-paymail v0.23.0
 	github.com/bitcoin-sv/go-sdk v1.1.20
@@ -76,7 +76,6 @@ require (
 	github.com/swaggo/swag/v2 v2.0.0-rc4 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gorm.io/driver/mysql v1.5.7 // indirect
 )

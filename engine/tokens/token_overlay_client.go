@@ -11,7 +11,7 @@ import (
 )
 
 type TokenOverlayClient interface {
-	VerifyAndSaveTokenTransfer(ctx context.Context, txHex string) error
+	VerifyAndSaveTokenTransfer(ctx context.Context, txHex *api.PutApiV1Bsv21TransferJSONRequestBody) error
 }
 
 type tokenOverlayClient struct {
@@ -31,8 +31,8 @@ func NewTokenOverlayClient(logger *zerolog.Logger, overlayURL string, httpClient
 	}, nil
 }
 
-func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txHex string) error {
-	resp, err := c.api.PutApiV1Bsv21TransferWithTextBody(ctx, txHex)
+func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txHex *api.PutApiV1Bsv21TransferJSONRequestBody) error {
+	resp, err := c.api.PutApiV1Bsv21Transfer(ctx, *txHex)
 	if err != nil {
 		c.log.Err(err).Ctx(ctx).Msg("Failed to send verify and save token transfer request")
 		return err
@@ -42,14 +42,14 @@ func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txH
 
 	switch resp.StatusCode {
 	case 201:
-		c.log.Info().Ctx(ctx).Msg("Token Transfer successfully verfied and saved in overlay")
+		c.log.Info().Ctx(ctx).Msg("Overlay validate and register token transfer")
 	case 204:
-		c.log.Warn().Ctx(ctx).Msg("Token Transfer already verfied and saved in overlay, probably by the receiver")
+		c.log.Warn().Ctx(ctx).Msg("Overlay validate token transfer (already knew about it)")
 	default:
 		errorBody, _ := io.ReadAll(resp.Body)
 		err = errors.New(string(errorBody))
 
-		c.log.Err(err).Ctx(ctx).Msg("Failed to verify and save token mint")
+		c.log.Err(err).Ctx(ctx).Msg("Failed register token transfer")
 		return err
 	}
 

@@ -293,8 +293,14 @@ func (m *DraftTransaction) getApplicableFee(fees []*gateway.StablecoinFee, trans
 			if fee.Type == "fixed" {
 				return fee.CommissionRecipient, uint64(fee.Value)
 			}
-			// TODO: think how to calculate the percentage fee
-			return fee.CommissionRecipient, uint64(math.Floor(float64(transactionAmount) * fee.Value))
+
+			if fee.Type == "percentage" {
+				// value represents percentage points (0.0, 100.0)
+				v := float64(transactionAmount) * (fee.Value / 100.0)
+				return fee.CommissionRecipient, uint64(math.Ceil(v)) // TODO: think if it should be Math.Floor
+			}
+
+			panic(fmt.Sprintf("unknown fee type: %s", fee.Type))
 		}
 	}
 

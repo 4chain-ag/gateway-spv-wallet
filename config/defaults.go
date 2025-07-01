@@ -98,7 +98,7 @@ func getDbDefaults() *DbConfig {
 func getLoggingDefaults() *LoggingConfig {
 	return &LoggingConfig{
 		Level:        "info",
-		Format:       "console",
+		Format:       "json",
 		InstanceName: "spv-wallet",
 		LogOrigin:    false,
 	}

@@ -41,13 +41,24 @@ func NewGatewayClient(logger *zerolog.Logger, gatewayURL string, httpClient *res
 
 func (c *gatewayClient) GetStablecoinRules(tokenID string) (*StablecoinRule, error) {
 	url := fmt.Sprintf("%s/coins/bsv21/rules?tokenId=%s", c.gatewayURL, tokenID)
-	var result StablecoinRule
+	var response StablecoinRule
 	_, err := c.httpClient.R().
-		SetResult(&result).
+		SetResult(&response).
 		Get(url)
 	if err != nil {
 		return nil, err
 	}
 
-	return &result, nil
+	result := &StablecoinRule{
+		CoinSym: response.CoinSym,
+		TokenId: response.TokenId,
+	}
+
+	for _, r := range response.Fees {
+		if r.CommissionRecipient != "" {
+			result.Fees = append(result.Fees, r)
+		}
+	}
+
+	return result, nil
 }

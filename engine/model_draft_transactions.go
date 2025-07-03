@@ -24,6 +24,10 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	TransactionOperationKey string = "operation"
+)
+
 // DraftTransaction is an object representing the draft BitCoin transaction prior to the final transaction
 //
 // Gorm related models & indexes: https://gorm.io/docs/models.html - https://gorm.io/docs/indexes.html
@@ -212,7 +216,9 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 			outs[1].TokenChange = true
 		}
 
-		if len(m.Configuration.Outputs) > 0 {
+		_, ok := m.Metadata[TransactionOperationKey]
+		// if the transaction is not a stablecoin transfer, we can skip the fee calculation
+		if !ok && len(m.Configuration.Outputs) > 0 {
 			// we are using the first output because if the transaction contains stablecoin
 			// its first output will ALWAYS include transaction of tokens to the receiver
 			firstOutput := m.Configuration.Outputs[0]

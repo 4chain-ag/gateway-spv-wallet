@@ -4,11 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"math"
 	"math/big"
 	"time"
 
-	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
 	ec "github.com/bitcoin-sv/go-sdk/primitives/ec"
 	"github.com/bitcoin-sv/go-sdk/script"
@@ -26,6 +26,7 @@ import (
 
 const (
 	TransactionOperationKey string = "operation"
+	TransactionFeeFreeKey   string = "fee-free"
 )
 
 // DraftTransaction is an object representing the draft BitCoin transaction prior to the final transaction
@@ -216,62 +217,11 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 			outs[1].TokenChange = true
 		}
 
-		_, ok := m.Metadata[TransactionOperationKey]
+		_, ok := m.Metadata[TransactionFeeFreeKey]
 		// if the transaction is not a stablecoin transfer, we can skip the fee calculation
-		if !ok && len(m.Configuration.Outputs) > 0 {
-			// we are using the first output because if the transaction contains stablecoin
-			// its first output will ALWAYS include transaction of tokens to the receiver
-			firstOutput := m.Configuration.Outputs[0]
-
-			inscription, err := firstOutput.findTokenInscription()
-			if err != nil {
+		if !ok && len(outs) > 0 {
+			if err := m.handleStablecoinFee(); err != nil {
 				return err
-			}
-
-			if inscription != nil {
-				// at this point txID and vout is not important as we care only about the Value
-				inscriptionData, err := bsv21.NewFromInscription("id", 0, inscription)
-				if err != nil {
-					return err
-				}
-
-				// ask issuer about rules and address
-				rules, err := c.GatewayClient().GetStablecoinRules(string(inscriptionData.ID))
-				if err != nil {
-					return err
-				}
-
-				// calculate fee and return the issuer address
-				feeIssuer, feeAmount := m.getApplicableFee(rules.Fees, inscriptionData.Amount)
-				if feeAmount > 0 {
-					if inscriptionData.Amount <= feeAmount {
-						return errors.New("fee will cover all of the transfer")
-					}
-
-					sendFeeScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), feeAmount)
-					if err != nil {
-						return err
-					}
-
-					feeOutput := &TransactionOutput{
-						Satoshis: 1,
-						Script:   sendFeeScript.String(),
-						To:       feeIssuer,
-
-						// to mozna bylo dodać w klientach
-						Token:    true,
-						TokenFee: true,
-					}
-
-					// add fee for the issuer
-					m.Configuration.Outputs = append(m.Configuration.Outputs, feeOutput)
-					// change original script to have original amount - fee
-					modifiedOriginalScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), inscriptionData.Amount-feeAmount)
-					if err != nil {
-						return err
-					}
-					firstOutput.Script = modifiedOriginalScript.String()
-				}
 			}
 		}
 
@@ -290,6 +240,68 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *DraftTransaction) handleStablecoinFee() error {
+	c := m.Client()
+
+	// we are using the first output because if the transaction contains stablecoin
+	// its first output will ALWAYS include transaction of tokens to the receiver
+	firstOutput := m.Configuration.Outputs[0]
+
+	inscription, err := firstOutput.findTokenInscription()
+	if err != nil {
+		return err
+	}
+
+	if inscription != nil {
+		// at this point txID and vout is not important as we care only about the Value
+		inscriptionData, err := bsv21.NewFromInscription("id", 0, inscription)
+		if err != nil {
+			return err
+		}
+
+		// ask issuer about rules and address
+		rules, err := c.GatewayClient().GetStablecoinRules(string(inscriptionData.ID))
+		if err != nil {
+			return err
+		}
+
+		if firstOutput.To == rules.EmitterID {
+			return nil // do not apply the rules to transfer to the emitter
+		}
+
+		// calculate fee and return the issuer address
+		feeIssuer, feeAmount := m.getApplicableFee(rules.Fees, inscriptionData.Amount)
+		if feeAmount > 0 {
+			if inscriptionData.Amount <= feeAmount {
+				return errors.New("fee will cover all of the transfer")
+			}
+
+			sendFeeScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), feeAmount)
+			if err != nil {
+				return err
+			}
+
+			feeOutput := &TransactionOutput{
+				Satoshis: 1,
+				Script:   sendFeeScript.String(),
+				To:       feeIssuer,
+
+				Token:    true,
+				TokenFee: true,
+			}
+
+			// add fee for the issuer
+			m.Configuration.Outputs = append(m.Configuration.Outputs, feeOutput)
+			// change original script to have original amount - fee
+			modifiedOriginalScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), inscriptionData.Amount-feeAmount)
+			if err != nil {
+				return err
+			}
+			firstOutput.Script = modifiedOriginalScript.String()
+		}
+	}
 }
 
 // getApplicableFee will return an issuer to whom return a fee and the fee amount

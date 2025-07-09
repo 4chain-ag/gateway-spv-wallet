@@ -16,9 +16,10 @@ type StablecoinFee struct {
 }
 
 type StablecoinRule struct {
-	CoinSym string           `json:"coinSym"`
-	TokenId string           `json:"tokenId"`
-	Fees    []*StablecoinFee `json:"fees"`
+	CoinSym   string           `json:"coinSym"`
+	TokenId   string           `json:"tokenId"`
+	EmitterID string           `json:"emitterId"`
+	Fees      []*StablecoinFee `json:"fees"`
 }
 
 type Client interface {
@@ -50,8 +51,9 @@ func (c *gatewayClient) GetStablecoinRules(tokenID string) (*StablecoinRule, err
 	}
 
 	result := &StablecoinRule{
-		CoinSym: response.CoinSym,
-		TokenId: response.TokenId,
+		CoinSym:   response.CoinSym,
+		TokenId:   response.TokenId,
+		EmitterID: response.EmitterID,
 	}
 
 	for _, r := range response.Fees {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/bitcoin-sv/go-paymail"
 	"github.com/go-resty/resty/v2"
-
 	"github.com/rs/zerolog"
 )
 

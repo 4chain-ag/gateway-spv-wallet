@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
-
-	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 )
 
 type internalIncomingTx struct {

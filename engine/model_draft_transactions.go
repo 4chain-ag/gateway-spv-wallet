@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
-
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
 	ec "github.com/bitcoin-sv/go-sdk/primitives/ec"
 	"github.com/bitcoin-sv/go-sdk/script"

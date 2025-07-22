@@ -3,6 +3,7 @@ package engine
 import (
 	"database/sql/driver"
 	"encoding/json"
+
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"

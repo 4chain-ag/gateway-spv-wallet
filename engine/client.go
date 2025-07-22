@@ -410,6 +410,7 @@ func (c *Client) TransferService() *TransferService {
 	return c.options.transferService
 }
 
+// Tokens will return the Token Overlay Client
 func (c *Client) Tokens() tokens.TokenOverlayClient {
 	return c.options.tokenOverlayClient
 }

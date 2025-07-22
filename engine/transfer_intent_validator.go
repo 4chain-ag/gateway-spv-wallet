@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// IntentValidator defines the interface for validating intents and retrieving transaction outputs.
 type IntentValidator interface {
 	ValidateSender(ctx context.Context, senderID string) error
 	GetTxOutputs(_ context.Context, intent *Intent) (txOutputs []*TransactionOutput, feeOutputs []*TransactionOutput, err error)
@@ -22,6 +23,7 @@ type defaultValidator struct {
 	c   ClientInterface
 }
 
+// NewDefaultIntentValidator creates a new instance of the default intent validator.
 func NewDefaultIntentValidator(log *zerolog.Logger, c ClientInterface) IntentValidator {
 	l := log.With().Str("component", "default-intent-validator").Logger()
 	return &defaultValidator{
@@ -30,11 +32,13 @@ func NewDefaultIntentValidator(log *zerolog.Logger, c ClientInterface) IntentVal
 	}
 }
 
+// ValidateSender validates the sender ID. Currently, it does not implement any validation logic and always returns nil.
 func (d defaultValidator) ValidateSender(_ context.Context, senderID string) error {
 	d.log.Debug().Str("senderID", senderID).Msg("Validating sender ID")
 	return nil // No validation logic implemented, always returns nil
 }
 
+// GetTxOutputs Creates transaction outputs for the intent, including fee outputs if applicable.
 func (d defaultValidator) GetTxOutputs(_ context.Context, intent *Intent) (txOutputs []*TransactionOutput, feeOutputs []*TransactionOutput, err error) {
 	d.log.Debug().Str("senderID", intent.SenderID).Msg("Getting fee outputs for intent")
 	txOutputs, feeOutputs, err = d.handleStablecoinOutputs(intent)
@@ -49,17 +53,6 @@ func (d defaultValidator) handleStablecoinOutputs(intent *Intent) (txOutputs []*
 	rules, err := d.c.GatewayClient().GetStablecoinRules(intent.StablecoinID)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	fmt.Println("Stablecoin Rules:", rules)
-	fmt.Println("<----------")
-	fmt.Println("Stablecoin Fees:", rules.Fees)
-	fmt.Println("<----------")
-	if rules.Fees != nil {
-		for _, fee := range rules.Fees {
-			fmt.Printf("Fee: %s, From: %d, To: %d, Value: %f, Recipient: %s\n", fee.Type, fee.From, fee.To, fee.Value, fee.CommissionRecipient)
-			fmt.Println("<----------")
-		}
 	}
 
 	feeAmount := uint64(0)

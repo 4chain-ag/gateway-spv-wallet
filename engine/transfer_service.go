@@ -21,16 +21,19 @@ type Intent struct {
 	Metadata     Metadata   `json:"metadata" swaggertype:"object,string" example:"key:value,key2:value2"`
 }
 
+// ValidationResponse is the model for the response of a transfer intent validation
 type ValidationResponse struct {
 	Nonce   string               `json:"nonce" example:"1234567890abcdef"`
 	Outputs []*TransactionOutput `json:"outputs"`
 }
 
+// TransferService provides methods to validate and send transfer intents
 type TransferService struct {
 	log       *zerolog.Logger
 	validator IntentValidator
 }
 
+// NewTransferService creates a new instance of TransferService with the provided validator and logger
 func NewTransferService(validator IntentValidator, log *zerolog.Logger) *TransferService {
 	return &TransferService{
 		log:       log,
@@ -38,6 +41,7 @@ func NewTransferService(validator IntentValidator, log *zerolog.Logger) *Transfe
 	}
 }
 
+// ValidateIntent validates transfer intent by checking the sender, calculating transaction outputs, and creating a transfer intent model
 func (s *TransferService) ValidateIntent(ctx context.Context, c ClientInterface, intent *Intent) (*ValidationResponse, error) {
 	s.log.Debug().Str("senderID", intent.SenderID).Msg("Validating transfer intent")
 
@@ -72,6 +76,7 @@ func (s *TransferService) ValidateIntent(ctx context.Context, c ClientInterface,
 	}, nil
 }
 
+// SendTransferIntent sends the transfer intent to the receiver's paymail server for validation
 func (s *TransferService) SendTransferIntent(intent Intent) (*ValidationResponse, error) {
 	_, domain, _ := paymail.SanitizePaymail(intent.ReceiverID)
 	path := "bsvalias/transfer-intent"

@@ -332,11 +332,6 @@ func (t *TransactionOutput) findTokenInscription() ([]byte, error) {
 	return bsv21.FindInscription(outputScript)
 }
 
-func (t *TransactionOutput) isToken() bool {
-	iscription, _ := t.findTokenInscription()
-	return iscription != nil
-}
-
 // processOpReturnOutput will process an op_return output
 func (t *TransactionOutput) processOpReturnOutput() (err error) {
 	// Create the sc from the Bitcoin address

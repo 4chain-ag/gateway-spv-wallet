@@ -25,7 +25,9 @@ import (
 )
 
 const (
-	TransactionFeeFreeKey   string = "fee-free"
+	// TransactionFeeFreeKey is the key used in metadata to indicate that the transaction is fee-free
+	TransactionFeeFreeKey string = "fee-free"
+	// TransactionOperationKey is the key used in metadata to indicate the operation type of the transaction
 	TransactionOperationKey string = "operation"
 )
 

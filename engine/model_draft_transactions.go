@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/bitcoin-sv/spv-wallet/conv"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
-	"github.com/bitcoin-sv/spv-wallet/engine/gateway"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"
 	"github.com/bitcoin-sv/spv-wallet/models/bsv"
@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	TransactionFeeFreeKey string = "fee-free"
+	TransactionFeeFreeKey   string = "fee-free"
+	TransactionOperationKey string = "operation"
 )
 
 // DraftTransaction is an object representing the draft BitCoin transaction prior to the final transaction
@@ -47,6 +48,12 @@ type DraftTransaction struct {
 	Configuration TransactionConfig `json:"configuration" toml:"configuration" yaml:"configuration" gorm:"<-;type:text;comment:This is the configuration struct in JSON"`
 	Status        DraftStatus       `json:"status" toml:"status" yaml:"status" gorm:"<-;type:varchar(10);index;comment:This is the status of the draft"`
 	FinalTxID     string            `json:"final_tx_id,omitempty" toml:"final_tx_id" yaml:"final_tx_id" gorm:"<-;type:char(64);index;comment:This is the final tx ID"`
+}
+
+type tokenTransactionConfig struct {
+	StablecoinID  string `json:"stablecoinID"`
+	TxOutputs     []int  `json:"txOutputs"`
+	ChangeOutputs []int  `json:"changeOutputs"`
 }
 
 // newDraftTransaction will start a new draft tx
@@ -158,12 +165,6 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 
 	// Get the sender's paymail from the metadata, this help when sender has multiple paymails
 	senderPaymail, _ := m.Metadata["sender"].(string)
-	// if ok {
-	// 	alias, _, address := paymail.SanitizePaymail(senderPaymail)
-	// 	if address != "" {
-	// 		conditions["alias"] = alias
-	// 	}
-	// }
 
 	if senderPaymail != "" {
 		paymailFrom = senderPaymail
@@ -202,28 +203,18 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 		}
 	} else {
 		// check if the transaction involves a stablecoin token
-		// assumptions:
-		// - single output at this point indicates a token transfer without change
-		// - two outputs at this point indicate a token transfer with a change output
-		// note: this logic should be handled on the client side
+		// this is done by checking the metadata for a key "isTokenTransaction"
+		// if the key is present and true, we will update the outputs accordingly
 
-		outs := m.Configuration.Outputs
+		isTokenTransaction := m.Metadata["isTokenTransaction"].(bool)
 
-		// mark token outputs (only first two)
-		if len(outs) > 0 && outs[0].isToken() {
-			outs[0].Token = true
-		}
+		_, ok := m.Metadata[TransactionOperationKey]
 
-		if len(outs) > 1 && outs[1].isToken() {
-			outs[1].Token = true
-			outs[1].TokenChange = true
-		}
-
-		_, ok := m.Metadata[TransactionFeeFreeKey]
-		// if the transaction is not a stablecoin transfer, we can skip the fee calculation
-		if !ok && len(outs) > 0 {
-			if err := m.handleStablecoinFee(); err != nil {
-				return err
+		// ok is a placeholder to not update the outputs when the transaction is issue or redeem
+		if isTokenTransaction && !ok {
+			err := m.UpdateTokenTxOutputs(senderPaymail)
+			if err != nil {
+				return fmt.Errorf("failed to update token tx outputs: %w", err)
 			}
 		}
 
@@ -244,89 +235,112 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 	return nil
 }
 
-func (m *DraftTransaction) handleStablecoinFee() error {
-	c := m.Client()
+// UpdateTokenTxOutputs will update the transaction outputs to include token transaction metadata
+func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string) error {
+	metadataConfig := m.mapMetadata()
 
-	// we are using the first output because if the transaction contains stablecoin
-	// its first output will ALWAYS include transaction of tokens to the receiver
-	firstOutput := m.Configuration.Outputs[0]
+	m.setTokenOutputs(metadataConfig)
 
-	inscription, err := firstOutput.findTokenInscription()
+	receiver, banknotes, amount, err := m.getBanknotes(metadataConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get banknotes: %w", err)
 	}
 
-	if inscription != nil {
-		// at this point txID and vout is not important as we care only about the Value
-		inscriptionData, err := bsv21.NewFromInscription("id", 0, inscription)
-		if err != nil {
-			return err
-		}
+	nonce, err := generateNonce()
+	if err != nil {
+		return fmt.Errorf("failed to generate nonce: %w", err)
+	}
 
-		// ask issuer about rules and address
-		rules, err := c.GatewayClient().GetStablecoinRules(string(inscriptionData.ID))
-		if err != nil {
-			return err
-		}
+	intent := Intent{
+		SenderID:     senderPaymail,
+		ReceiverID:   receiver,
+		Nonce:        nonce,
+		StablecoinID: metadataConfig.StablecoinID,
+		Banknotes:    banknotes,
+		Amount:       amount,
+	}
 
-		if firstOutput.To == rules.EmitterID {
-			return nil // do not apply the rules to transfer to the emitter
-		}
-
-		// calculate fee and return the issuer address
-		feeIssuer, feeAmount := m.getApplicableFee(rules.Fees, inscriptionData.Amount)
-		if feeAmount > 0 {
-			if inscriptionData.Amount <= feeAmount {
-				return errors.New("fee will cover all of the transfer")
-			}
-
-			sendFeeScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), feeAmount)
-			if err != nil {
-				return err
-			}
-
-			feeOutput := &TransactionOutput{
-				Satoshis: 1,
-				Script:   sendFeeScript.String(),
-				To:       feeIssuer,
-
-				Token:    true,
-				TokenFee: true,
-			}
-
-			// add fee for the issuer
-			m.Configuration.Outputs = append(m.Configuration.Outputs, feeOutput)
-			// change original script to have original amount - fee
-			modifiedOriginalScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(rules.TokenId), inscriptionData.Amount-feeAmount)
-			if err != nil {
-				return err
-			}
-			firstOutput.Script = modifiedOriginalScript.String()
+	if _, ok := m.Metadata[TransactionFeeFreeKey]; ok {
+		intent.Metadata = map[string]any{
+			TransactionFeeFreeKey: true,
 		}
 	}
+
+	resp, err := m.client.TransferService().SendTransferIntent(intent)
+	if err != nil {
+		return fmt.Errorf("failed to send transfer intent: %w", err)
+	}
+
+	m.updateTokenTxOutputs(metadataConfig, resp)
 
 	return nil
 }
 
-// getApplicableFee will return an issuer to whom return a fee and the fee amount
-func (m *DraftTransaction) getApplicableFee(fees []*gateway.StablecoinFee, transactionAmount uint64) (string, uint64) {
-	for _, fee := range fees {
-		if transactionAmount >= fee.From && transactionAmount < fee.To {
-			if fee.Type == "fixed" {
-				return fee.CommissionRecipient, uint64(fee.Value)
+func (m *DraftTransaction) setTokenOutputs(cfg *tokenTransactionConfig) {
+	for _, index := range cfg.TxOutputs {
+		m.Configuration.Outputs[index].Token = true
+	}
+
+	for _, index := range cfg.ChangeOutputs {
+		m.Configuration.Outputs[index].Token = true
+		m.Configuration.Outputs[index].TokenChange = true
+	}
+}
+
+func (m *DraftTransaction) mapMetadata() *tokenTransactionConfig {
+	jsonBytes, err := json.Marshal(m.Metadata["tokenTransactionConfig"])
+	if err != nil {
+		panic(err)
+	}
+
+	var metadata tokenTransactionConfig
+	if err = json.Unmarshal(jsonBytes, &metadata); err != nil {
+		return nil
+	}
+
+	return &metadata
+}
+
+func (m *DraftTransaction) getBanknotes(tTxCfg *tokenTransactionConfig) (string, []Banknote, uint64, error) {
+	banknotes := make([]Banknote, 0, len(tTxCfg.TxOutputs))
+	amount := uint64(0)
+	var receiverPaymail string
+
+	for _, outputIndex := range tTxCfg.TxOutputs {
+		index := outputIndex
+		output := m.Configuration.Outputs[index]
+		receiverPaymail = output.To
+
+		inscription, err := output.findTokenInscription()
+		if err != nil {
+			return "", nil, 0, err
+		}
+
+		if inscription != nil {
+			inscriptionData, err := bsv21.NewFromInscription("test", 1, inscription)
+			if err != nil {
+				return "", nil, 0, err
 			}
 
-			if fee.Type == "percentage" {
-				// value represents percentage points (0.0, 100.0)
-				v := float64(transactionAmount) * (fee.Value / 100.0)
-				return fee.CommissionRecipient, uint64(math.Ceil(v)) // TODO: think if it should be Math.Floor
-			}
-
-			panic(fmt.Sprintf("unknown fee type: %s", fee.Type))
+			banknotes = append(banknotes, Banknote{
+				Amount: inscriptionData.Amount,
+				Serial: string(inscriptionData.ID),
+			})
+			amount += inscriptionData.Amount
 		}
 	}
 
-	return "", 0
+	return receiverPaymail, banknotes, amount, nil
+}
+
+func (m *DraftTransaction) updateTokenTxOutputs(tTxCfg *tokenTransactionConfig, vr *ValidationResponse) {
+	outputs := vr.Outputs
+
+	for _, outputIndex := range tTxCfg.ChangeOutputs {
+		outputs = append(outputs, m.Configuration.Outputs[outputIndex])
+	}
+
+	m.Configuration.Outputs = outputs
 }
 
 // createTransactionHex will create the transaction with the given inputs and outputs

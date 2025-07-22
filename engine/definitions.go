@@ -35,6 +35,7 @@ const (
 	ModelXPub             ModelName = "xpub"
 	ModelContact          ModelName = "contact"
 	ModelWebhook          ModelName = "webhook"
+	ModelTransferIntent   ModelName = "transfer_intent"
 )
 
 // AllModelNames is a list of all models
@@ -62,6 +63,7 @@ const (
 	tableXPubs             = "xpubs"
 	tableContacts          = "contacts"
 	tableWebhooks          = "webhooks"
+	tableTransferIntents   = "transfer_intents"
 )
 
 const (
@@ -125,6 +127,7 @@ func AllDBModels(v2 bool) []any {
 		&Contact{},
 		&Webhook{},
 		&PaymailAddress{},
+		&TransferIntent{},
 	}
 
 	if !v2 {

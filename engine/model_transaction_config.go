@@ -63,21 +63,6 @@ type OpReturn struct {
 	StringParts []string     `json:"string_parts,omitempty"` // String parts
 }
 
-// TransactionOutput is an output on the transaction config
-type TransactionOutput struct {
-	OpReturn     *OpReturn       `json:"op_return,omitempty" toml:"op_return" yaml:"op_return"`                // Add op_return data as an output
-	PaymailP4    *PaymailP4      `json:"paymail_p4,omitempty" toml:"paymail_p4" yaml:"paymail_p4"`             // Additional information for P4 or Paymail
-	Satoshis     uint64          `json:"satoshis" toml:"satoshis" yaml:"satoshis"`                             // Set the specific satoshis to send (when applicable)
-	Script       string          `json:"script,omitempty" toml:"script" yaml:"script"`                         // custom (non-standard) script output
-	Scripts      []*ScriptOutput `json:"scripts" toml:"scripts" yaml:"scripts"`                                // Add script outputs
-	To           string          `json:"to,omitempty" toml:"to" yaml:"to"`                                     // To address, paymail, handle
-	UseForChange bool            `json:"use_for_change,omitempty" toml:"use_for_change" yaml:"use_for_change"` // if set, no change destinations will be created, but all outputs flagged will get the change
-
-	Token       bool `json:"token"`
-	TokenChange bool `json:"token_change"`
-	TokenFee    bool `json:"token_fee"`
-}
-
 // PaymailPayloadFormat is the format of the paymail payload
 type PaymailPayloadFormat uint32
 

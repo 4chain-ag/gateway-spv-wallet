@@ -10,6 +10,7 @@ import (
 	crypto "github.com/bitcoin-sv/go-sdk/primitives/hash"
 	"github.com/bitcoin-sv/spv-wallet/engine/datastore"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
+	"gorm.io/gorm"
 )
 
 // TransferIntent is the model for validating a transfer request
@@ -99,4 +100,23 @@ func generateNonce() (string, error) {
 	}
 
 	return hex.EncodeToString(bb), nil
+}
+
+func getTransferIntentByID(ctx context.Context, id string, opts ...ModelOps) (*TransferIntent, error) {
+	conditions := map[string]interface{}{
+		idField: id,
+	}
+
+	transferIntent := &TransferIntent{Model: *NewBaseModel(
+		ModelTransferIntent,
+		opts...,
+	)}
+	if err := Get(ctx, transferIntent, conditions, false, defaultDatabaseReadTimeout, true); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return transferIntent, nil
 }

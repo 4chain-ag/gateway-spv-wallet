@@ -8,4 +8,5 @@ import (
 func RegisterRoutes(handlersManager *routes.Manager) {
 	group := handlersManager.Group(routes.GroupRoot, "/bsvalias")
 	group.POST("/transfer-intent", transferIntent)
+	group.POST("/transfer", transfer)
 }

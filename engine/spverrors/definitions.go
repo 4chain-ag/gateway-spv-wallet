@@ -217,6 +217,9 @@ var ErrPaymailInvalidMerkleRoots = models.SPVError{Message: "invalid merkle root
 // ErrRetrivePaymailInfo is when error occurred during retrieving paymail info
 var ErrRetrivePaymailInfo = models.SPVError{Message: "error during retrieving paymail info", StatusCode: 500, Code: "error-paymail-retrieve-info"}
 
+// ErrMissingPaymailInMetadata is when paymail is not found in metadata
+var ErrMissingPaymailInMetadata = models.SPVError{Message: "missing paymail in metadata", StatusCode: 400, Code: "error-paymail-missing-in-metadata"}
+
 // ////////////////////////////////// CAPABILITIES ERRORS
 
 // ErrCapabilitiesPkiUnsupported is when PKI is not supported for given paymail domain

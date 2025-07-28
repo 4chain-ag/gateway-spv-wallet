@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	compat "github.com/bitcoin-sv/go-sdk/compat/bip32"
 	ec "github.com/bitcoin-sv/go-sdk/primitives/ec"
+	crypto "github.com/bitcoin-sv/go-sdk/primitives/hash"
 	"github.com/bitcoin-sv/go-sdk/script"
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/go-sdk/transaction/template/p2pkh"
@@ -47,6 +49,7 @@ type DraftTransaction struct {
 	Configuration TransactionConfig `json:"configuration" toml:"configuration" yaml:"configuration" gorm:"<-;type:text;comment:This is the configuration struct in JSON"`
 	Status        DraftStatus       `json:"status" toml:"status" yaml:"status" gorm:"<-;type:varchar(10);index;comment:This is the status of the draft"`
 	FinalTxID     string            `json:"final_tx_id,omitempty" toml:"final_tx_id" yaml:"final_tx_id" gorm:"<-;type:char(64);index;comment:This is the final tx ID"`
+	RefID         string            `json:"-" toml:"ref_id" yaml:"ref_id" gorm:"<-;type:char(64);index;comment:This is the reference ID for the transaction"`
 }
 
 type tokenTransactionConfig struct {
@@ -207,13 +210,18 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 
 		isTokenTransaction := m.Metadata["isTokenTransaction"].(bool)
 
-		_, ok := m.Metadata[TransactionOperationKey]
+		if isTokenTransaction {
+			metadataConfig := m.mapMetadata()
 
-		// ok is a placeholder to not update the outputs when the transaction is issue or redeem
-		if isTokenTransaction && !ok {
-			err := m.UpdateTokenTxOutputs(senderPaymail)
-			if err != nil {
-				return fmt.Errorf("failed to update token tx outputs: %w", err)
+			m.setTokenOutputs(metadataConfig)
+
+			// isSpecialOperation is a placeholder to not update the outputs when the transaction is issue or redeem
+			_, isSpecialOperation := m.Metadata[TransactionOperationKey]
+			if !isSpecialOperation {
+				err := m.UpdateTokenTxOutputs(senderPaymail, metadataConfig)
+				if err != nil {
+					return fmt.Errorf("failed to update token tx outputs: %w", err)
+				}
 			}
 		}
 
@@ -235,11 +243,7 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 }
 
 // UpdateTokenTxOutputs will update the transaction outputs to include token transaction metadata
-func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string) error {
-	metadataConfig := m.mapMetadata()
-
-	m.setTokenOutputs(metadataConfig)
-
+func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string, metadataConfig *tokenTransactionConfig) error {
 	receiver, banknotes, amount, err := m.getBanknotes(metadataConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get banknotes: %w", err)
@@ -272,6 +276,8 @@ func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string) error {
 
 	m.updateTokenTxOutputs(metadataConfig, resp)
 
+	m.setRefID(intent, resp)
+
 	return nil
 }
 
@@ -284,6 +290,14 @@ func (m *DraftTransaction) setTokenOutputs(cfg *tokenTransactionConfig) {
 		m.Configuration.Outputs[index].Token = true
 		m.Configuration.Outputs[index].TokenChange = true
 	}
+}
+
+func (m *DraftTransaction) setRefID(intent Intent, vr *ValidationResponse) {
+	computedNonces := fmt.Sprintf("%s%s", intent.Nonce, vr.Nonce)
+	hash := crypto.Sha256([]byte(computedNonces))
+	refID := hex.EncodeToString(hash[:])
+
+	m.RefID = refID
 }
 
 func (m *DraftTransaction) mapMetadata() *tokenTransactionConfig {

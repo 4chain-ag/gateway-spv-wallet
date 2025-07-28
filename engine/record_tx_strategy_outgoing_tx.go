@@ -2,10 +2,12 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/specifications"
+	"github.com/bitcoin-sv/go-paymail"
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 )
@@ -26,7 +28,9 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 	logger := c.Logger()
 
 	var transaction *Transaction
+	var draftTransaction *DraftTransaction
 	var err error
+	isTokenTx := _isTokenTransaction(strategy.SDKTx)
 
 	if transaction, err = strategy.createOutgoingTxToRecord(ctx, c, opts); err != nil {
 		return nil, spverrors.ErrCreateOutgoingTxFailed.Wrap(err)
@@ -40,11 +44,13 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 		return nil, spverrors.ErrDuringSaveTx
 	}
 
-	if _shouldNotifyP2P(transaction) {
+	if !isTokenTx && _shouldNotifyP2P(transaction) {
 		if err = processP2PTransaction(ctx, transaction); err != nil {
 			return nil, _handleNotifyP2PError(ctx, c, transaction, err)
 		}
 	}
+
+	draftTransaction = transaction.draftTransaction
 
 	// transaction can be updated by internal_incoming_tx
 	transaction, err = getTransactionByID(ctx, transaction.XPubID, transaction.ID, WithClient(c))
@@ -58,8 +64,36 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 		return transaction, nil
 	}
 
-	if _isTokenTransaction(strategy.SDKTx) {
+	if isTokenTx {
 		logger.Info().Str("strategy", "outgoing").Msg("Token transaction FOUND")
+
+		err = _ensureTxHasDraft(transaction, draftTransaction, strategy, c)
+		if err != nil {
+			logger.Error().Err(err).Str("strategy", "outgoing").Msg("Failed to ensure transaction has draft")
+			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
+
+		receiverDomain, err := _getPaymailDomainFromMetadata(transaction.Metadata)
+		if err != nil {
+			logger.Error().Err(err).Str("strategy", "outgoing").Msg("Failed to get receiver domain from metadata")
+			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
+
+		transfer := Transfer{
+			RefID: transaction.draftTransaction.RefID,
+			TxHex: transaction.Hex,
+		}
+
+		operation, isSpecialOperation := transaction.Metadata[TransactionOperationKey]
+		if isSpecialOperation {
+			transfer.SpecialOperation = operation.(string)
+		}
+
+		err = _sendTransfer(ctx, c, transfer, receiverDomain)
+		if err != nil {
+			logger.Error().Err(err).Str("strategy", "outgoing").Msg("Failed to send transfer")
+			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
 
 		tm, err := buildTransferMessage(transaction)
 		if err != nil {
@@ -220,4 +254,55 @@ func _isTokenTransaction(tx *trx.Transaction) bool {
 	}
 
 	return false
+}
+
+func _ensureTxHasDraft(tx *Transaction, draftTx *DraftTransaction, strategy *outgoingTx, c ClientInterface) error {
+	if tx.draftTransaction != nil {
+		return nil
+	}
+
+	if draftTx != nil {
+		tx.draftTransaction = draftTx
+
+		return nil
+	}
+
+	dTx, err := getDraftTransactionID(context.Background(), "", strategy.RelatedDraftID, c.DefaultModelOptions()...)
+	if err != nil || dTx == nil {
+		return spverrors.ErrCouldNotFindDraftTx.Wrap(err)
+	}
+
+	tx.draftTransaction = dTx
+
+	return nil
+}
+
+func _getPaymailDomainFromMetadata(metadata map[string]interface{}) (string, error) {
+	receiverPaymail, ok := metadata["receiver"].(string)
+	if !ok || receiverPaymail == "" {
+		return "", spverrors.ErrTokenValidationFailed.Wrap(errors.New("receiver paymail is missing in transaction metadata"))
+	}
+
+	receiverDomain, err := paymail.SanitizeDomain(receiverPaymail)
+	if err != nil {
+		return "", spverrors.ErrTokenValidationFailed.Wrap(err)
+	}
+
+	return receiverDomain, nil
+}
+
+func _sendTransfer(ctx context.Context, c ClientInterface, transfer Transfer, receiverDomain string) error {
+	if c.GetPaymailConfig().IsAllowedDomain(receiverDomain) {
+		if _, err := c.TransferService().IncomingTransfer(ctx, c, transfer); err != nil {
+			return spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
+
+		return nil
+	}
+
+	if err := c.TransferService().SendTransfer(receiverDomain, transfer); err != nil {
+		return spverrors.ErrTokenValidationFailed.Wrap(err)
+	}
+
+	return nil
 }

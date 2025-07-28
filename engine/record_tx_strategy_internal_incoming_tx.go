@@ -19,7 +19,6 @@ func (strategy *internalIncomingTx) Name() string {
 
 func (strategy *internalIncomingTx) Execute(ctx context.Context, c ClientInterface, _ []ModelOps) (*Transaction, error) {
 	transaction := strategy.Tx
-
 	logger := c.Logger()
 
 	if _isTokenTransaction(transaction.parsedTx) {
@@ -37,6 +36,8 @@ func (strategy *internalIncomingTx) Execute(ctx context.Context, c ClientInterfa
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
 		}
 		logger.Info().Str("strategy", "internal incoming").Msg("Token transaction successfully VALIDATED")
+
+		c.TransferService().NotifyGatewayAboutTransfer()
 	}
 
 	if err := broadcastTransaction(ctx, transaction); err != nil {

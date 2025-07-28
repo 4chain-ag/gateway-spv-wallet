@@ -50,14 +50,15 @@ func (d defaultValidator) GetTxOutputs(_ context.Context, intent *Intent) (txOut
 }
 
 func (d defaultValidator) handleStablecoinOutputs(intent *Intent) (txOutputs []*TransactionOutput, feeOutputs []*TransactionOutput, err error) {
-	rules, err := d.c.GatewayClient().GetStablecoinRules(intent.StablecoinID)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	feeAmount := uint64(0)
+
 	// check if the intent has a metadata key that indicates fee-free transactions
 	if _, ok := intent.Metadata[TransactionFeeFreeKey]; !ok {
+		rules, err := d.c.GatewayClient().GetStablecoinRules(intent.StablecoinID)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		feeAmount, feeOutputs, err = d.calculateAndCreateFeeOutputs(intent, rules)
 		if err != nil {
 			d.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to calculate fee outputs")

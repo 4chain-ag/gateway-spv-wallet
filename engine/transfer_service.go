@@ -90,6 +90,7 @@ func (s *TransferService) ValidateIntent(ctx context.Context, c ClientInterface,
 	}, nil
 }
 
+// ValidateTransfer validates the transfer by comparing the scripts in the transfer intent with the transaction outputs
 func (s *TransferService) ValidateTransfer(c ClientInterface, transfer Transfer) error {
 	tx, err := trx.NewTransactionFromHex(transfer.TxHex)
 	if err != nil {
@@ -159,6 +160,7 @@ func (s *TransferService) SendTransfer(receiverDomain string, transfer Transfer)
 	return nil
 }
 
+// IncomingTransfer processes an incoming transfer by validating it, creating a transaction from the hex, and recording it
 func (s *TransferService) IncomingTransfer(ctx context.Context, c ClientInterface, transfer Transfer) (*Transaction, error) {
 	err := s.ValidateTransfer(c, transfer)
 	if err != nil {
@@ -185,6 +187,7 @@ func (s *TransferService) IncomingTransfer(ctx context.Context, c ClientInterfac
 	return transaction, nil
 }
 
+// NotifyGatewayAboutTransfer is a placeholder method for notifying the gateway about the transfer
 func (s *TransferService) NotifyGatewayAboutTransfer() {
 	// This method is a placeholder for notifying the gateway about the transfer.
 	// The implementation will depend on the specific requirements and architecture of the system.

@@ -251,6 +251,15 @@ func (c *Client) loadTxSyncService() {
 	}
 }
 
+func (c *Client) loadStablecoinTransferService() {
+	if c.options.stablecoinTransferService == nil {
+		logger := c.Logger().With().Str("subservice", "transfer").Logger()
+
+		validator := NewDefaultIntentValidator(&logger, c)
+		c.options.stablecoinTransferService = NewStablecoinTransferService(validator, &logger)
+	}
+}
+
 // loadTaskmanager will load the TaskManager and start the TaskManager client
 func (c *Client) loadTaskmanager(ctx context.Context) (err error) {
 	// Load if a custom interface was NOT provided

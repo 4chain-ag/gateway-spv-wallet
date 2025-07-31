@@ -35,6 +35,7 @@ const (
 	ModelXPub             ModelName = "xpub"
 	ModelContact          ModelName = "contact"
 	ModelWebhook          ModelName = "webhook"
+	ModelTransferIntent   ModelName = "transfer_intent"
 )
 
 // AllModelNames is a list of all models
@@ -53,15 +54,16 @@ var AllModelNames = []ModelName{
 
 // Internal table names
 const (
-	tableAccessKeys        = "access_keys"
-	tableDestinations      = "destinations"
-	tableDraftTransactions = "draft_transactions"
-	tablePaymailAddresses  = "paymail_addresses"
-	tableTransactions      = "transactions"
-	tableUTXOs             = "utxos"
-	tableXPubs             = "xpubs"
-	tableContacts          = "contacts"
-	tableWebhooks          = "webhooks"
+	tableAccessKeys                = "access_keys"
+	tableDestinations              = "destinations"
+	tableDraftTransactions         = "draft_transactions"
+	tablePaymailAddresses          = "paymail_addresses"
+	tableTransactions              = "transactions"
+	tableUTXOs                     = "utxos"
+	tableXPubs                     = "xpubs"
+	tableContacts                  = "contacts"
+	tableWebhooks                  = "webhooks"
+	tableStablecoinTransferIntents = "stablecoin_transfer_intents"
 )
 
 const (
@@ -125,6 +127,7 @@ func AllDBModels(v2 bool) []any {
 		&Contact{},
 		&Webhook{},
 		&PaymailAddress{},
+		&StablecoinTransferIntent{},
 	}
 
 	if !v2 {

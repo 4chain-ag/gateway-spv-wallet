@@ -8,6 +8,7 @@ import (
 	"github.com/bitcoin-sv/spv-wallet/actions/merkleroots"
 	"github.com/bitcoin-sv/spv-wallet/actions/paymails"
 	"github.com/bitcoin-sv/spv-wallet/actions/sharedconfig"
+	"github.com/bitcoin-sv/spv-wallet/actions/stablecoins"
 	"github.com/bitcoin-sv/spv-wallet/actions/transactions"
 	"github.com/bitcoin-sv/spv-wallet/actions/users"
 	"github.com/bitcoin-sv/spv-wallet/actions/utxos"
@@ -26,4 +27,5 @@ func Register(handlersManager *handlers.Manager) {
 	sharedconfig.RegisterRoutes(handlersManager)
 	merkleroots.RegisterRoutes(handlersManager)
 	contacts.RegisterRoutes(handlersManager)
+	stablecoins.RegisterRoutes(handlersManager)
 }

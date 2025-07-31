@@ -62,6 +62,7 @@ type (
 		arcConfig                  chainmodels.ARCConfig // Configuration for ARC
 		bhsConfig                  chainmodels.BHSConfig // Configuration for BHS
 		feeUnit                    *bsv.FeeUnit          // Fee unit for transactions
+		stablecoinTransferService  *StablecoinTransferService
 
 		// v2
 		repositories *repository.All   // Repositories for all db models
@@ -173,6 +174,7 @@ func NewClient(ctx context.Context, opts ...ClientOps) (ClientInterface, error) 
 	client.loadAddressesService()
 	client.loadDataService()
 	client.loadOperationsService()
+	client.loadStablecoinTransferService()
 
 	// Load the Paymail client and service (if does not exist)
 	if err = client.loadPaymailComponents(); err != nil {
@@ -403,6 +405,12 @@ func (c *Client) TxSyncService() *txsync.Service {
 	return c.options.txSync
 }
 
+// StablecoinTransferService will return the transfer service
+func (c *Client) StablecoinTransferService() *StablecoinTransferService {
+	return c.options.stablecoinTransferService
+}
+
+// Tokens will return the Token Overlay Client
 func (c *Client) Tokens() tokens.TokenOverlayClient {
 	return c.options.tokenOverlayClient
 }

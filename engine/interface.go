@@ -206,4 +206,5 @@ type ClientInterface interface {
 	V2
 	Tokens() tokens.TokenOverlayClient
 	GatewayClient() gateway.Client
+	StablecoinTransferService() *StablecoinTransferService
 }

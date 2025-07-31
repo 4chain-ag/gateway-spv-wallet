@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
-
-	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 )
 
 type internalIncomingTx struct {
@@ -20,13 +19,12 @@ func (strategy *internalIncomingTx) Name() string {
 
 func (strategy *internalIncomingTx) Execute(ctx context.Context, c ClientInterface, _ []ModelOps) (*Transaction, error) {
 	transaction := strategy.Tx
-
 	logger := c.Logger()
 
 	if _isTokenTransaction(transaction.parsedTx) {
 		logger.Info().Str("strategy", "internal incoming").Msg("Token transaction FOUND")
 
-		tm, err := buildTransferMessage(transaction)
+		tm, err := buildStablecoinTransferMessage(transaction)
 		if err != nil {
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
 		}
@@ -38,6 +36,8 @@ func (strategy *internalIncomingTx) Execute(ctx context.Context, c ClientInterfa
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
 		}
 		logger.Info().Str("strategy", "internal incoming").Msg("Token transaction successfully VALIDATED")
+
+		c.StablecoinTransferService().NotifyGatewayAboutTransfer()
 	}
 
 	if err := broadcastTransaction(ctx, transaction); err != nil {
@@ -72,7 +72,7 @@ func (strategy *internalIncomingTx) LockKey() string {
 	return fmt.Sprintf("incoming-%s", strategy.Tx.ID)
 }
 
-func buildTransferMessage(t *Transaction) (*api.PutApiV1Bsv21TransferJSONRequestBody, error) {
+func buildStablecoinTransferMessage(t *Transaction) (*api.PutApiV1Bsv21TransferJSONRequestBody, error) {
 	draft, err := getDraftTransactionID(context.Background(), t.XPubID, t.DraftID, t.GetOptions(false)...)
 	if err != nil {
 		return nil, err
@@ -121,6 +121,22 @@ func buildTransferMessage(t *Transaction) (*api.PutApiV1Bsv21TransferJSONRequest
 
 		Hex: t.Hex,
 	}, nil
+}
+
+func _sendStablecoinTransfer(ctx context.Context, c ClientInterface, transfer Transfer, receiverDomain string) error {
+	if c.GetPaymailConfig().IsAllowedDomain(receiverDomain) {
+		if _, err := c.StablecoinTransferService().IncomingTransfer(ctx, c, transfer); err != nil {
+			return spverrors.ErrTokenValidationFailed.Wrap(err)
+		}
+
+		return nil
+	}
+
+	if err := c.StablecoinTransferService().SendTransfer(receiverDomain, transfer); err != nil {
+		return spverrors.ErrTokenValidationFailed.Wrap(err)
+	}
+
+	return nil
 }
 
 func ptrTo[T any](v T) *T {

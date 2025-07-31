@@ -13,8 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// TransferIntent is the model for validating a transfer request
-type TransferIntent struct {
+// StablecoinTransferIntent is the model for validating a transfer request
+type StablecoinTransferIntent struct {
 	// Base model
 	Model
 
@@ -29,7 +29,7 @@ type TransferIntent struct {
 }
 
 // BeforeCreating is a hook that is called before the model is created in the database
-func (m *TransferIntent) BeforeCreating(_ context.Context) (err error) {
+func (m *StablecoinTransferIntent) BeforeCreating(_ context.Context) (err error) {
 	m.Client().Logger().Debug().
 		Str("draftTxID", m.GetID()).
 		Msgf("starting: %s BeforeCreating hook...", m.Name())
@@ -41,28 +41,28 @@ func (m *TransferIntent) BeforeCreating(_ context.Context) (err error) {
 }
 
 // GetModelName returns the name of the model
-func (m *TransferIntent) GetModelName() string {
+func (m *StablecoinTransferIntent) GetModelName() string {
 	return ModelTransferIntent.String()
 }
 
 // GetModelTableName returns the table name for the model
-func (m *TransferIntent) GetModelTableName() string {
-	return tableTransferIntents
+func (m *StablecoinTransferIntent) GetModelTableName() string {
+	return tableStablecoinTransferIntents
 }
 
 // PostMigrate is called after the model is migrated to the database
-func (m *TransferIntent) PostMigrate(client datastore.ClientInterface) error {
-	err := client.IndexMetadata(client.GetTableName(tableTransferIntents), metadataField)
+func (m *StablecoinTransferIntent) PostMigrate(client datastore.ClientInterface) error {
+	err := client.IndexMetadata(client.GetTableName(tableStablecoinTransferIntents), metadataField)
 	return spverrors.Wrapf(err, "failed to index metadata column on model %s", m.GetModelName())
 }
 
 // Save will save the model into the Datastore
-func (m *TransferIntent) Save(ctx context.Context) error {
+func (m *StablecoinTransferIntent) Save(ctx context.Context) error {
 	return Save(ctx, m)
 }
 
-// CreateTransferIntent creates a new TransferIntent with the provided parameters
-func CreateTransferIntent(intent *Intent, outputs []*TransactionOutput, opts ...ModelOps) (*TransferIntent, error) {
+// CreateStablecoinTransferIntent creates a new StablecoinTransferIntent with the provided parameters
+func CreateStablecoinTransferIntent(intent *Intent, outputs []*TransactionOutput, opts ...ModelOps) (*StablecoinTransferIntent, error) {
 	if intent == nil {
 		return nil, errors.New("transfer intent cannot be nil")
 	}
@@ -76,7 +76,7 @@ func CreateTransferIntent(intent *Intent, outputs []*TransactionOutput, opts ...
 	hash := crypto.Sha256([]byte(computedNonces))
 	refID := hex.EncodeToString(hash[:])
 
-	transferIntent := &TransferIntent{
+	sti := &StablecoinTransferIntent{
 		ID:           refID,
 		SenderID:     intent.SenderID,
 		ReceiverID:   intent.ReceiverID,
@@ -89,7 +89,7 @@ func CreateTransferIntent(intent *Intent, outputs []*TransactionOutput, opts ...
 		Model: *NewBaseModel(ModelTransferIntent, opts...),
 	}
 
-	return transferIntent, nil
+	return sti, nil
 }
 
 func generateNonce() (string, error) {
@@ -102,21 +102,21 @@ func generateNonce() (string, error) {
 	return hex.EncodeToString(bb), nil
 }
 
-func getTransferIntentByID(ctx context.Context, id string, opts ...ModelOps) (*TransferIntent, error) {
+func getStablecoinTransferIntentByID(ctx context.Context, id string, opts ...ModelOps) (*StablecoinTransferIntent, error) {
 	conditions := map[string]interface{}{
 		idField: id,
 	}
 
-	transferIntent := &TransferIntent{Model: *NewBaseModel(
+	sti := &StablecoinTransferIntent{Model: *NewBaseModel(
 		ModelTransferIntent,
 		opts...,
 	)}
-	if err := Get(ctx, transferIntent, conditions, false, defaultDatabaseReadTimeout, true); err != nil {
+	if err := Get(ctx, sti, conditions, false, defaultDatabaseReadTimeout, true); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	return transferIntent, nil
+	return sti, nil
 }

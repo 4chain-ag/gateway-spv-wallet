@@ -269,7 +269,7 @@ func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string, metadataCo
 		}
 	}
 
-	resp, err := m.client.TransferService().SendTransferIntent(intent)
+	resp, err := m.client.StablecoinTransferService().SendTransferIntent(intent)
 	if err != nil {
 		return fmt.Errorf("failed to send transfer intent: %w", err)
 	}

@@ -41,22 +41,22 @@ type Transfer struct {
 	SpecialOperation string `json:"_,omitempty" example:"issue/redeem"`
 }
 
-// TransferService provides methods to validate and send transfer intents
-type TransferService struct {
+// StablecoinTransferService provides methods to validate and send transfer intents
+type StablecoinTransferService struct {
 	log       *zerolog.Logger
 	validator IntentValidator
 }
 
-// NewTransferService creates a new instance of TransferService with the provided validator and logger
-func NewTransferService(validator IntentValidator, log *zerolog.Logger) *TransferService {
-	return &TransferService{
+// NewStablecoinTransferService creates a new instance of TransferService with the provided validator and logger
+func NewStablecoinTransferService(validator IntentValidator, log *zerolog.Logger) *StablecoinTransferService {
+	return &StablecoinTransferService{
 		log:       log,
 		validator: validator,
 	}
 }
 
 // ValidateIntent validates transfer intent by checking the sender, calculating transaction outputs, and creating a transfer intent model
-func (s *TransferService) ValidateIntent(ctx context.Context, c ClientInterface, intent *Intent) (*ValidationResponse, error) {
+func (s *StablecoinTransferService) ValidateIntent(ctx context.Context, c ClientInterface, intent *Intent) (*ValidationResponse, error) {
 	s.log.Debug().Str("senderID", intent.SenderID).Msg("Validating transfer intent")
 
 	if err := s.validator.ValidateSender(ctx, intent.SenderID); err != nil {
@@ -72,37 +72,37 @@ func (s *TransferService) ValidateIntent(ctx context.Context, c ClientInterface,
 
 	opts := []ModelOps{WithClient(c)}
 	outputs := append(txOutputs, feeOutputs...)
-	transferIntent, err := CreateTransferIntent(intent, outputs, c.DefaultModelOptions(append(opts, New())...)...)
+	sti, err := CreateStablecoinTransferIntent(intent, outputs, c.DefaultModelOptions(append(opts, New())...)...)
 	if err != nil {
 		s.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to create transfer intent")
 		return nil, fmt.Errorf("failed to create transfer intent: %w", err)
 	}
 
-	err = transferIntent.Save(ctx)
+	err = sti.Save(ctx)
 	if err != nil {
 		s.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to save transfer intent")
 		return nil, fmt.Errorf("failed to save transfer intent: %w", err)
 	}
 
 	return &ValidationResponse{
-		Nonce:   transferIntent.Nonce,
+		Nonce:   sti.Nonce,
 		Outputs: outputs,
 	}, nil
 }
 
 // ValidateTransfer validates the transfer by comparing the scripts in the transfer intent with the transaction outputs
-func (s *TransferService) ValidateTransfer(c ClientInterface, transfer Transfer) error {
+func (s *StablecoinTransferService) ValidateTransfer(c ClientInterface, transfer Transfer) error {
 	tx, err := trx.NewTransactionFromHex(transfer.TxHex)
 	if err != nil {
 		return spverrors.ErrInvalidHex
 	}
 
-	transferIntent, err := getTransferIntentByID(context.Background(), transfer.RefID, c.DefaultModelOptions()...)
+	sti, err := getStablecoinTransferIntentByID(context.Background(), transfer.RefID, c.DefaultModelOptions()...)
 	if err != nil {
 		return fmt.Errorf("error getting transfer intent: %w", err)
 	}
 
-	err = compareScripts(transferIntent, tx, transfer)
+	err = compareScripts(sti, tx, transfer)
 	if err != nil {
 		s.log.Error().Err(err).Str("refID", transfer.RefID).Msg("Transfer validation failed")
 		return fmt.Errorf("transfer validation failed: %w", err)
@@ -112,7 +112,7 @@ func (s *TransferService) ValidateTransfer(c ClientInterface, transfer Transfer)
 }
 
 // SendTransferIntent sends the transfer intent to the receiver's paymail server for validation
-func (s *TransferService) SendTransferIntent(intent Intent) (*ValidationResponse, error) {
+func (s *StablecoinTransferService) SendTransferIntent(intent Intent) (*ValidationResponse, error) {
 	_, domain, _ := paymail.SanitizePaymail(intent.ReceiverID)
 	path := "bsvalias/transfer-intent"
 	url := fmt.Sprintf("https://%s/%s", domain, path)
@@ -137,7 +137,7 @@ func (s *TransferService) SendTransferIntent(intent Intent) (*ValidationResponse
 }
 
 // SendTransfer sends the transfer to the receiver's paymail server for validation
-func (s *TransferService) SendTransfer(receiverDomain string, transfer Transfer) error {
+func (s *StablecoinTransferService) SendTransfer(receiverDomain string, transfer Transfer) error {
 	path := "bsvalias/transfer"
 	url := fmt.Sprintf("https://%s/%s", receiverDomain, path)
 
@@ -161,7 +161,7 @@ func (s *TransferService) SendTransfer(receiverDomain string, transfer Transfer)
 }
 
 // IncomingTransfer processes an incoming transfer by validating it, creating a transaction from the hex, and recording it
-func (s *TransferService) IncomingTransfer(ctx context.Context, c ClientInterface, transfer Transfer) (*Transaction, error) {
+func (s *StablecoinTransferService) IncomingTransfer(ctx context.Context, c ClientInterface, transfer Transfer) (*Transaction, error) {
 	err := s.ValidateTransfer(c, transfer)
 	if err != nil {
 		s.log.Error().Err(err).Str("refID", transfer.RefID).Msg("Transfer validation failed")
@@ -188,7 +188,7 @@ func (s *TransferService) IncomingTransfer(ctx context.Context, c ClientInterfac
 }
 
 // NotifyGatewayAboutTransfer is a placeholder method for notifying the gateway about the transfer
-func (s *TransferService) NotifyGatewayAboutTransfer() {
+func (s *StablecoinTransferService) NotifyGatewayAboutTransfer() {
 	// This method is a placeholder for notifying the gateway about the transfer.
 	// The implementation will depend on the specific requirements and architecture of the system.
 	s.log.Info().Msg("NotifyGatewayAboutTransfer method called, but not implemented yet.")
@@ -196,7 +196,7 @@ func (s *TransferService) NotifyGatewayAboutTransfer() {
 
 // compareScripts compares the scripts in the transfer intent with the transaction outputs
 // it is required for tx to contain all outputs from the intent
-func compareScripts(intent *TransferIntent, tx *trx.Transaction, transfer Transfer) error {
+func compareScripts(intent *StablecoinTransferIntent, tx *trx.Transaction, transfer Transfer) error {
 	// intent can be nil if the transaction is issue or redeem operation
 	if intent == nil {
 		if transfer.SpecialOperation != "" {

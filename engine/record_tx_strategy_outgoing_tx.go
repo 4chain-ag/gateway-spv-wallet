@@ -89,13 +89,13 @@ func (strategy *outgoingTx) Execute(ctx context.Context, c ClientInterface, opts
 			transfer.SpecialOperation = operation.(string)
 		}
 
-		err = _sendTransfer(ctx, c, transfer, receiverDomain)
+		err = _sendStablecoinTransfer(ctx, c, transfer, receiverDomain)
 		if err != nil {
 			logger.Error().Err(err).Str("strategy", "outgoing").Msg("Failed to send transfer")
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
 		}
 
-		tm, err := buildTransferMessage(transaction)
+		tm, err := buildStablecoinTransferMessage(transaction)
 		if err != nil {
 			return nil, spverrors.ErrTokenValidationFailed.Wrap(err)
 		}
@@ -289,20 +289,4 @@ func _getPaymailDomainFromMetadata(metadata map[string]interface{}) (string, err
 	}
 
 	return receiverDomain, nil
-}
-
-func _sendTransfer(ctx context.Context, c ClientInterface, transfer Transfer, receiverDomain string) error {
-	if c.GetPaymailConfig().IsAllowedDomain(receiverDomain) {
-		if _, err := c.TransferService().IncomingTransfer(ctx, c, transfer); err != nil {
-			return spverrors.ErrTokenValidationFailed.Wrap(err)
-		}
-
-		return nil
-	}
-
-	if err := c.TransferService().SendTransfer(receiverDomain, transfer); err != nil {
-		return spverrors.ErrTokenValidationFailed.Wrap(err)
-	}
-
-	return nil
 }

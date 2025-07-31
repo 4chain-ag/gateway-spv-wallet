@@ -1,4 +1,4 @@
-package transfer
+package stablecoins
 
 import (
 	"net/http"
@@ -9,18 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// transferIntent validate transfer intent
+// stablecoinTransferIntent validate transfer intent
 // Paymail validate transfer intent
 // @Summary		Validate transfer intent
 // @Description	Validate transfer intent
-// @Tags		Transfer
+// @Tags		Stablecoin Transfer
 // @Produce		json
-// @Param		TransferIntent body Intent true "Transfer intent use to create outputs and validate transfer"
+// @Param		StablecoinTransferIntent body Intent true "Transfer intent use to create outputs and validate transfer"
 // @Success		200 {object} ValidationResponse "Transfer intent validation response"
 // @Failure		400	"Bad request - Error while parsing SearchPaymails from request body"
 // @Failure 	500	"Internal server error - Error while searching for paymail addresses"
 // @Router		/bsvalias/transfer-intent [post]
-func transferIntent(c *gin.Context) {
+func stablecoinTransferIntent(c *gin.Context) {
 	logger := reqctx.Logger(c)
 	engineInstance := reqctx.Engine(c)
 
@@ -31,7 +31,7 @@ func transferIntent(c *gin.Context) {
 		return
 	}
 
-	resp, err := engineInstance.TransferService().ValidateIntent(c.Request.Context(), engineInstance, requestBody)
+	resp, err := engineInstance.StablecoinTransferService().ValidateIntent(c.Request.Context(), engineInstance, requestBody)
 	if err != nil {
 		spverrors.ErrorResponse(c, err, logger)
 		return

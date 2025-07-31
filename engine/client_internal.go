@@ -251,12 +251,12 @@ func (c *Client) loadTxSyncService() {
 	}
 }
 
-func (c *Client) loadTransferService() {
-	if c.options.transferService == nil {
+func (c *Client) loadStablecoinTransferService() {
+	if c.options.stablecoinTransferService == nil {
 		logger := c.Logger().With().Str("subservice", "transfer").Logger()
 
 		validator := NewDefaultIntentValidator(&logger, c)
-		c.options.transferService = NewTransferService(validator, &logger)
+		c.options.stablecoinTransferService = NewStablecoinTransferService(validator, &logger)
 	}
 }
 

@@ -1,4 +1,4 @@
-package transfer
+package stablecoins
 
 import (
 	routes "github.com/bitcoin-sv/spv-wallet/server/handlers"
@@ -7,6 +7,6 @@ import (
 // RegisterRoutes creates the specific package routes in RESTful style
 func RegisterRoutes(handlersManager *routes.Manager) {
 	group := handlersManager.Group(routes.GroupRoot, "/bsvalias")
-	group.POST("/transfer-intent", transferIntent)
-	group.POST("/transfer", transfer)
+	group.POST("/transfer-intent", stablecoinTransferIntent)
+	group.POST("/transfer", stablecoinTransfer)
 }

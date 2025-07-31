@@ -1,4 +1,4 @@
-package transfer
+package stablecoins
 
 import (
 	"net/http"
@@ -9,18 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// transfer incoming transfer
-// Paymail incoming transfer
-// @Summary		Incoming transfer
-// @Description	Incoming transfer
-// @Tags		Transfer
+// stablecoinTransfer incoming stablecoin transfer
+// Paymail incoming stablecoin transfer
+// @Summary		Incoming stablecoin transfer
+// @Description	Incoming stablecoin transfer
+// @Tags		Stablecoin Transfer
 // @Produce		json
 // @Param		TransferData body Transfer true "Transfer info"
 // @Success		200 {object} ValidationResponse "Transfer intent validation response"
 // @Failure		400	"Bad request - Error while parsing SearchPaymails from request body"
 // @Failure 	500	"Internal server error - Error while searching for paymail addresses"
 // @Router		/bsvalias/transfer [post]
-func transfer(c *gin.Context) {
+func stablecoinTransfer(c *gin.Context) {
 	logger := reqctx.Logger(c)
 	engineInstance := reqctx.Engine(c)
 
@@ -31,7 +31,7 @@ func transfer(c *gin.Context) {
 		return
 	}
 
-	tx, err := engineInstance.TransferService().IncomingTransfer(c.Request.Context(), engineInstance, *requestBody)
+	tx, err := engineInstance.StablecoinTransferService().IncomingTransfer(c.Request.Context(), engineInstance, *requestBody)
 	if err != nil {
 		spverrors.ErrorResponse(c, err, logger)
 		return

@@ -31,6 +31,8 @@ const (
 	TransactionFeeFreeKey string = "fee-free"
 	// TransactionOperationKey is the key used in metadata to indicate the operation type of the transaction
 	TransactionOperationKey string = "operation"
+	// TransactionConfigKey is the key used in metadata to indicate the transfer config
+	TransactionConfigKey string = "tokenTransactionConfig"
 )
 
 // DraftTransaction is an object representing the draft BitCoin transaction prior to the final transaction
@@ -269,6 +271,7 @@ func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string, metadataCo
 		}
 	}
 
+	// TODO: could be updated here?
 	resp, err := m.client.StablecoinTransferService().SendTransferIntent(intent)
 	if err != nil {
 		return fmt.Errorf("failed to send transfer intent: %w", err)
@@ -301,7 +304,7 @@ func (m *DraftTransaction) setRefID(intent Intent, vr *ValidationResponse) {
 }
 
 func (m *DraftTransaction) mapMetadata() *tokenTransactionConfig {
-	jsonBytes, err := json.Marshal(m.Metadata["tokenTransactionConfig"])
+	jsonBytes, err := json.Marshal(m.Metadata[TransactionConfigKey])
 	if err != nil {
 		panic(err)
 	}
@@ -324,7 +327,7 @@ func (m *DraftTransaction) getBanknotes(tTxCfg *tokenTransactionConfig) (string,
 		output := m.Configuration.Outputs[index]
 		receiverPaymail = output.To
 
-		inscription, err := output.findTokenInscription()
+		inscription, err := output.findBSV21TokenInscription()
 		if err != nil {
 			return "", nil, 0, err
 		}

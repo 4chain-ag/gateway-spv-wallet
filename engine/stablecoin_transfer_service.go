@@ -8,10 +8,10 @@ import (
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"github.com/bitcoin-sv/go-paymail"
-	"github.com/bitcoin-sv/go-sdk/script"
-	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"
+	"github.com/bsv-blockchain/go-sdk/script"
+	trx "github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 )

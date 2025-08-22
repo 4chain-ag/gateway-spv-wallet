@@ -251,6 +251,8 @@ type ExperimentalConfig struct {
 type TokenOverlayConfig struct {
 	// URL is a URL for Token Overlay Service.
 	URL string `json:"url" mapstructure:"url"`
+	// APIVersion is version of Token Overlay Service api.
+	APIVersion string `json:"api_version" mapstructure:"api_version"`
 }
 
 // GatewayConfig is a config for Gateway Backend Service for retrieving stablecoin rules information.

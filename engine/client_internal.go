@@ -346,7 +346,15 @@ func (c *Client) askForFeeUnit(ctx context.Context) error {
 }
 
 func (c *Client) loadTokenOverlayClient() error {
-	tc, err := tokens.NewTokenOverlayClient(c.Logger(), c.options.config.TokenOverlay.URL, c.options.httpClient)
+	var tc tokens.TokenOverlayClient
+	var err error
+
+	if c.options.config.TokenOverlay.APIVersion == "v1" {
+		tc, err = tokens.NewTokenOverlayClient(c.Logger(), c.options.config.TokenOverlay.URL, c.options.httpClient, tokens.APIV1)
+	} else {
+		tc, err = tokens.NewTokenOverlayClient(c.Logger(), c.options.config.TokenOverlay.URL, c.options.httpClient, tokens.APIV2)
+	}
+
 	if err != nil {
 		return spverrors.Wrapf(err, "failed to init token overlay client")
 	}

@@ -150,7 +150,7 @@ func (d defaultValidator) createNewOutputs(intent *Intent, feeAmount uint64) ([]
 		}
 
 		remainingAmount := b.Amount - feeAmount
-		txScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(intent.StablecoinID), remainingAmount)
+		txScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(b.Serial), remainingAmount)
 		if err != nil {
 			d.log.Error().Err(err).Msg("Failed to create BSV21 transfer script")
 			return nil, fmt.Errorf("failed to create BSV21 transfer script: %w", err)

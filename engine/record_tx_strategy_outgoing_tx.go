@@ -8,8 +8,8 @@ import (
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/specifications"
 	"github.com/bitcoin-sv/go-paymail"
-	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
+	trx "github.com/bsv-blockchain/go-sdk/transaction"
 )
 
 type outgoingTx struct {

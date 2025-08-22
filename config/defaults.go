@@ -175,7 +175,8 @@ func getExperimentalFeaturesConfig() *ExperimentalConfig {
 
 func getTokenOverlayConfig() *TokenOverlayConfig {
 	return &TokenOverlayConfig{
-		URL: "http://localhost:3091",
+		URL:        "http://localhost:3091",
+		APIVersion: "v2",
 	}
 }
 

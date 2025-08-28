@@ -210,7 +210,7 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 		// this is done by checking the metadata for a key "isTokenTransaction"
 		// if the key is present and true, we will update the outputs accordingly
 
-		isTokenTransaction := m.Metadata["isTokenTransaction"].(bool)
+		_, isTokenTransaction := m.Metadata["isTokenTransaction"]
 
 		if isTokenTransaction {
 			metadataConfig := m.mapMetadata()

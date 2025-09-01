@@ -33,6 +33,7 @@ type ValidationResponse struct {
 	Outputs []*TransactionOutput `json:"outputs"`
 }
 
+// Transfer is the model for the stablecoin transfer
 type Transfer struct {
 	RefID string `json:"refId" example:"0761072ea3519adcbf4c2b9061bf64cb52243533f72d1cec47280a6eabfb3ad5"`
 	TxHex string `json:"txHex" example:"0100000001..."`

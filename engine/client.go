@@ -415,6 +415,7 @@ func (c *Client) Tokens() tokens.TokenOverlayClient {
 	return c.options.tokenOverlayClient
 }
 
+// GatewayClient will return the Gateway Client
 func (c *Client) GatewayClient() gateway.Client {
 	return c.options.gatewayClient
 }

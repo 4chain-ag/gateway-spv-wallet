@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// StablecoinFee represents fee for a stablecoin data
 type StablecoinFee struct {
 	CommissionRecipient string  `json:"commissionRecipient"`
 	From                uint64  `json:"from"`
@@ -15,6 +16,7 @@ type StablecoinFee struct {
 	Value               float64 `json:"value"`
 }
 
+// StablecoinRule represents rules for the stablecoin
 type StablecoinRule struct {
 	CoinSym   string           `json:"coinSym"`
 	TokenId   string           `json:"tokenId"`
@@ -22,6 +24,7 @@ type StablecoinRule struct {
 	Fees      []*StablecoinFee `json:"fees"`
 }
 
+// Client represents an interface of gateway client
 type Client interface {
 	GetStablecoinRules(tokenID string) (*StablecoinRule, error)
 }
@@ -32,6 +35,7 @@ type gatewayClient struct {
 	httpClient *resty.Client
 }
 
+// NewGatewayClient returns gateway client
 func NewGatewayClient(logger *zerolog.Logger, gatewayURL string, httpClient *resty.Client) (Client, error) {
 	return &gatewayClient{
 		log:        logger.With().Str("tokens", "gateway-client").Logger(),

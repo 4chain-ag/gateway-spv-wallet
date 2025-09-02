@@ -55,9 +55,11 @@ type DraftTransaction struct {
 }
 
 type tokenTransactionConfig struct {
-	StablecoinID  string `json:"stablecoinId"`
-	TxOutputs     []int  `json:"txOutputs"`
-	ChangeOutputs []int  `json:"changeOutputs"`
+	StablecoinID   string `json:"stablecoinId"`
+	TxOutputs      []int  `json:"txOutputs"`
+	ChangeOutputs  []int  `json:"changeOutputs"`
+	FinalTxOutputs []int  `json:"finalTxOutputs"`
+	FeeTxOutputs   []int  `json:"feeTxOutputs"`
 }
 
 // newDraftTransaction will start a new draft tx
@@ -271,11 +273,15 @@ func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string, metadataCo
 		}
 	}
 
-	// TODO: could be updated here?
 	resp, err := m.client.StablecoinTransferService().SendTransferIntent(intent)
 	if err != nil {
 		return fmt.Errorf("failed to send transfer intent: %w", err)
 	}
+
+	// Add new tx outputs to easier track balance in transactions
+	metadataConfig.FinalTxOutputs = resp.TransferIndexes
+	metadataConfig.FeeTxOutputs = resp.FeeIndexes
+	m.Metadata[TransactionConfigKey] = metadataConfig
 
 	m.updateTokenTxOutputs(metadataConfig, resp)
 

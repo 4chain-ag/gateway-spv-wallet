@@ -12,7 +12,7 @@ toolchain go1.24.6
 replace github.com/bitcoin-sv/spv-wallet/models => ./models
 
 require (
-	github.com/4chain-AG/gateway-overlay v0.19.0
+	github.com/4chain-AG/gateway-overlay v0.22.0
 	github.com/99designs/gqlgen v0.17.66
 	github.com/bitcoin-sv/go-paymail v0.23.0
 	github.com/bitcoin-sv/go-sdk v1.1.20

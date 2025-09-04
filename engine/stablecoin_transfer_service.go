@@ -29,10 +29,13 @@ type Intent struct {
 
 // ValidationResponse is the model for the response of a transfer intent validation
 type ValidationResponse struct {
-	Nonce   string               `json:"nonce" example:"1234567890abcdef"`
-	Outputs []*TransactionOutput `json:"outputs"`
+	Nonce           string               `json:"nonce" example:"1234567890abcdef"`
+	Outputs         []*TransactionOutput `json:"outputs"`
+	TransferIndexes []int                `json:"transferIndexes"`
+	FeeIndexes      []int                `json:"feeIndexes"`
 }
 
+// Transfer is the model for the stablecoin transfer
 type Transfer struct {
 	RefID string `json:"refId" example:"0761072ea3519adcbf4c2b9061bf64cb52243533f72d1cec47280a6eabfb3ad5"`
 	TxHex string `json:"txHex" example:"0100000001..."`
@@ -69,6 +72,14 @@ func (s *StablecoinTransferService) ValidateIntent(ctx context.Context, c Client
 		s.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to get fee outputs")
 		return nil, err
 	}
+	transferIndexes := make([]int, 0, len(txOutputs))
+	for vout, _ := range txOutputs {
+		transferIndexes = append(transferIndexes, vout)
+	}
+	feeIndexes := make([]int, 0, len(feeOutputs))
+	for vout, _ := range feeOutputs {
+		feeIndexes = append(feeIndexes, vout+len(txOutputs))
+	}
 
 	opts := []ModelOps{WithClient(c)}
 	outputs := append(txOutputs, feeOutputs...)
@@ -85,8 +96,10 @@ func (s *StablecoinTransferService) ValidateIntent(ctx context.Context, c Client
 	}
 
 	return &ValidationResponse{
-		Nonce:   sti.Nonce,
-		Outputs: outputs,
+		Nonce:           sti.Nonce,
+		Outputs:         outputs,
+		TransferIndexes: transferIndexes,
+		FeeIndexes:      feeIndexes,
 	}, nil
 }
 

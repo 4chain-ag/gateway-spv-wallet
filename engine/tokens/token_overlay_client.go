@@ -11,13 +11,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// APIVersion represents current version of the overlay client API
 type APIVersion int
 
 const (
+	// APIV1 represents overlay client API v1
 	APIV1 APIVersion = iota
+	// APIV2 represents overlay client API v2
 	APIV2
 )
 
+// TransferRequest represents transfer request structure
 type TransferRequest struct {
 	FeeVouts      *[]int `json:"fee_vouts,omitempty"`
 	Hex           string `json:"hex"`
@@ -31,6 +35,7 @@ type TransferRequest struct {
 	AssetID string `json:"-"`
 }
 
+// TokenOverlayClient represents an interface of token overlay client
 type TokenOverlayClient interface {
 	VerifyAndSaveTokenTransfer(ctx context.Context, txHex *TransferRequest) error
 }
@@ -41,15 +46,16 @@ type tokenOverlayClient struct {
 	apiVersion APIVersion
 }
 
+// NewTokenOverlayClient returns a new token overlay client
 func NewTokenOverlayClient(logger *zerolog.Logger, overlayURL string, httpClient *resty.Client, apiVersion APIVersion) (TokenOverlayClient, error) {
-	api, err := api.NewClient(overlayURL, api.WithHTTPClient(httpClient.GetClient()))
+	apiClient, err := api.NewClient(overlayURL, api.WithHTTPClient(httpClient.GetClient()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &tokenOverlayClient{
 		log:        logger.With().Str("tokens", "token-overlay-client").Logger(),
-		api:        api,
+		api:        apiClient,
 		apiVersion: apiVersion,
 	}, nil
 }

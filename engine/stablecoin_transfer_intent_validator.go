@@ -51,50 +51,99 @@ func (d defaultValidator) GetTxOutputs(_ context.Context, intent *Intent) (txOut
 
 func (d defaultValidator) handleStablecoinOutputs(intent *Intent) (txOutputs []*TransactionOutput, feeOutputs []*TransactionOutput, err error) {
 	feeAmount := uint64(0)
+	feeIssuer := ""
 
-	// check if the intent has a metadata key that indicates fee-free transactions
+	// Check if the intent has a metadata key that indicates fee-free transactions
 	if _, ok := intent.Metadata[TransactionFeeFreeKey]; !ok {
 		rules, err := d.c.GatewayClient().GetStablecoinRules(intent.StablecoinID)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		feeAmount, feeOutputs, err = d.calculateAndCreateFeeOutputs(intent, rules)
-		if err != nil {
-			d.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to calculate fee outputs")
-			return nil, nil, fmt.Errorf("failed to calculate fee outputs: %w", err)
+		if intent.ReceiverID != rules.EmitterID {
+			feeIssuer, feeAmount = d.getApplicableFee(rules.Fees, intent.Amount)
+			if intent.Amount <= feeAmount {
+				return nil, nil, errors.New("fee will cover all of the transfer")
+			}
 		}
 	}
 
-	// TODO: fee will have specific serial number, so we need to decrease the amount of banknotes
-	txOutputs, err = d.createNewOutputs(intent, feeAmount)
+	// Sort banknotes to consume larger ones first for efficiency
+	sort.Slice(intent.Banknotes, func(i, j int) bool {
+		return intent.Banknotes[i].Amount > intent.Banknotes[j].Amount
+	})
+
+	// Create a mutable copy of banknotes
+	remainingBanknotes := make([]Banknote, len(intent.Banknotes))
+	copy(remainingBanknotes, intent.Banknotes)
+
+	// First, try to create fee outputs from the main stablecoin banknotes
+	// This function will also return the remaining banknotes
+	feeOutputs, remainingBanknotes, err = d.createFeeOutputsFromBanknotes(remainingBanknotes, feeIssuer, feeAmount)
 	if err != nil {
-		d.log.Error().Err(err).Str("senderID", intent.SenderID).Msg("Failed to create new outputs")
-		return nil, nil, fmt.Errorf("failed to create new outputs: %w", err)
+		return nil, nil, fmt.Errorf("failed to create fee outputs: %w", err)
+	}
+
+	// Now, create the outputs for the receiver from the remaining banknotes
+	txOutputs, err = d.createReceiverOutputs(remainingBanknotes, intent.ReceiverID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create receiver outputs: %w", err)
 	}
 
 	return
 }
 
-func (d defaultValidator) calculateAndCreateFeeOutputs(intent *Intent, rules *gateway.StablecoinRule) (uint64, []*TransactionOutput, error) {
-	feeOutputs := make([]*TransactionOutput, 0)
-	feeAmount := uint64(0)
-	if intent.ReceiverID != rules.EmitterID {
-		var feeIssuer string
-		feeIssuer, feeAmount = d.getApplicableFee(rules.Fees, intent.Amount)
-		if feeAmount > 0 {
-			if intent.Amount <= feeAmount {
-				return 0, nil, errors.New("fee will cover all of the transfer")
-			}
+// createFeeOutputsFromBanknotes consumes banknotes to create outputs for a specific recipient
+// and returns the outputs and any remaining banknotes.
+func (d defaultValidator) createFeeOutputsFromBanknotes(banknotes []Banknote, to string, requiredAmount uint64) ([]*TransactionOutput, []Banknote, error) {
+	outputs := make([]*TransactionOutput, 0)
+	consumedAmount := uint64(0)
+	remainingBanknotes := make([]Banknote, 0)
 
-			var err error
-			feeOutputs, err = d.createFeeOutputs(intent.StablecoinID, feeIssuer, feeAmount)
-			if err != nil {
-				return 0, nil, fmt.Errorf("failed to create fee output: %w", err)
-			}
+	for _, b := range banknotes {
+		if consumedAmount >= requiredAmount {
+			remainingBanknotes = append(remainingBanknotes, b)
+			continue
+		}
+
+		// Calculate how much of the current banknote to use
+		amountToUse := b.Amount
+		if consumedAmount+amountToUse > requiredAmount {
+			amountToUse = requiredAmount - consumedAmount
+		}
+
+		// Create output fee for the amount to be used
+		output, err := d.createTransactionOutput(b.Serial, to, amountToUse, true)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create output for %s: %w", b.Serial, err)
+		}
+		outputs = append(outputs, output)
+		consumedAmount += amountToUse
+
+		// Check if there's any remaining value in the current banknote
+		if b.Amount > amountToUse {
+			remainingBanknotes = append(remainingBanknotes, Banknote{Amount: b.Amount - amountToUse, Serial: b.Serial})
 		}
 	}
-	return feeAmount, feeOutputs, nil
+
+	if consumedAmount < requiredAmount {
+		return nil, nil, fmt.Errorf("not enough banknote value to cover the required amount")
+	}
+
+	return outputs, remainingBanknotes, nil
+}
+
+// createReceiverOutputs creates outputs for the receiver from the remaining banknotes.
+func (d defaultValidator) createReceiverOutputs(banknotes []Banknote, receiverID string) ([]*TransactionOutput, error) {
+	outputs := make([]*TransactionOutput, 0, len(banknotes))
+	for _, b := range banknotes {
+		output, err := d.createTransactionOutput(b.Serial, receiverID, b.Amount, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create receiver output: %w", err)
+		}
+		outputs = append(outputs, output)
+	}
+	return outputs, nil
 }
 
 func (d defaultValidator) getApplicableFee(fees []*gateway.StablecoinFee, transactionAmount uint64) (string, uint64) {
@@ -116,57 +165,19 @@ func (d defaultValidator) getApplicableFee(fees []*gateway.StablecoinFee, transa
 	return "", 0
 }
 
-func (d defaultValidator) createFeeOutputs(stablecoinID string, feeIssuer string, feeAmount uint64) ([]*TransactionOutput, error) {
-	sendFeeScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(stablecoinID), feeAmount)
+// createTransactionOutput is a helper function to create a single TransactionOutput.
+func (d defaultValidator) createTransactionOutput(serial, to string, amount uint64, isTokenFee bool) (*TransactionOutput, error) {
+	txScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(serial), amount)
 	if err != nil {
-		return nil, err
+		d.log.Error().Err(err).Msg("Failed to create BSV21 transfer script")
+		return nil, fmt.Errorf("failed to create BSV21 transfer script: %w", err)
 	}
 
-	feeOutput := &TransactionOutput{
+	return &TransactionOutput{
 		Satoshis: 1,
-		Script:   sendFeeScript.String(),
-		To:       feeIssuer,
-
+		Script:   txScript.String(),
+		To:       to,
 		Token:    true,
-		TokenFee: true,
-	}
-
-	return []*TransactionOutput{feeOutput}, nil
-}
-
-func (d defaultValidator) createNewOutputs(intent *Intent, feeAmount uint64) ([]*TransactionOutput, error) {
-	banknotes := intent.Banknotes
-	sort.Slice(banknotes, func(i, j int) bool {
-		return banknotes[i].Amount > banknotes[j].Amount
-	})
-
-	outputs := make([]*TransactionOutput, 0, len(banknotes))
-	for _, b := range banknotes {
-		// TODO: fee will have serial number and only the same one should be decreased
-		// fee can consume more than one banknote, so we need to check if the feeAmount is greater than 0
-		if b.Amount <= feeAmount {
-			feeAmount -= b.Amount
-			continue
-		}
-
-		remainingAmount := b.Amount - feeAmount
-		txScript, err := bsv21.NewBsv21Transfer(bsv21.TokenID(b.Serial), remainingAmount)
-		if err != nil {
-			d.log.Error().Err(err).Msg("Failed to create BSV21 transfer script")
-			return nil, fmt.Errorf("failed to create BSV21 transfer script: %w", err)
-		}
-
-		output := &TransactionOutput{
-			Satoshis: 1, // minimal satoshi amount
-			Script:   txScript.String(),
-			To:       intent.ReceiverID,
-
-			Token:    true,
-			TokenFee: false,
-		}
-
-		outputs = append(outputs, output)
-	}
-
-	return outputs, nil
+		TokenFee: isTokenFee,
+	}, nil
 }

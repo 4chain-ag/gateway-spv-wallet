@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
+	"github.com/bitcoin-sv/spv-wallet/engine/tokens"
 )
 
 type internalIncomingTx struct {
@@ -72,7 +72,7 @@ func (strategy *internalIncomingTx) LockKey() string {
 	return fmt.Sprintf("incoming-%s", strategy.Tx.ID)
 }
 
-func buildStablecoinTransferMessage(t *Transaction) (*api.PutApiV1Bsv21TransferJSONRequestBody, error) {
+func buildStablecoinTransferMessage(t *Transaction) (*tokens.TransferRequest, error) {
 	draft, err := getDraftTransactionID(context.Background(), t.XPubID, t.DraftID, t.GetOptions(false)...)
 	if err != nil {
 		return nil, err
@@ -111,15 +111,19 @@ func buildStablecoinTransferMessage(t *Transaction) (*api.PutApiV1Bsv21TransferJ
 		return nil, spverrors.ErrInvalidTransferNoTransfer
 	}
 
-	return &api.PutApiV1Bsv21TransferJSONRequestBody{
-		SenderId:   transferOut.PaymailP4.FromPaymail,
-		ReceiverId: fmt.Sprintf("%s@%s", transferOut.PaymailP4.Alias, transferOut.PaymailP4.Domain),
+	txMetadataCfg := draft.mapMetadata()
+
+	return &tokens.TransferRequest{
+		SenderID:   transferOut.PaymailP4.FromPaymail,
+		ReceiverID: fmt.Sprintf("%s@%s", transferOut.PaymailP4.Alias, transferOut.PaymailP4.Domain),
 
 		SenderVouts:   &senderOuts,
 		ReceiverVouts: &receiverOuts,
 		FeeVouts:      &feeOuts,
 
 		Hex: t.Hex,
+
+		AssetID: txMetadataCfg.StablecoinID,
 	}, nil
 }
 

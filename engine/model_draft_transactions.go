@@ -31,6 +31,8 @@ const (
 	TransactionFeeFreeKey string = "fee-free"
 	// TransactionOperationKey is the key used in metadata to indicate the operation type of the transaction
 	TransactionOperationKey string = "operation"
+	// TransactionConfigKey is the key used in metadata to indicate the transfer config
+	TransactionConfigKey string = "tokenTransactionConfig"
 )
 
 // DraftTransaction is an object representing the draft BitCoin transaction prior to the final transaction
@@ -53,9 +55,11 @@ type DraftTransaction struct {
 }
 
 type tokenTransactionConfig struct {
-	StablecoinID  string `json:"stablecoinId"`
-	TxOutputs     []int  `json:"txOutputs"`
-	ChangeOutputs []int  `json:"changeOutputs"`
+	StablecoinID   string `json:"stablecoinId"`
+	TxOutputs      []int  `json:"txOutputs"`
+	ChangeOutputs  []int  `json:"changeOutputs"`
+	FinalTxOutputs []int  `json:"finalTxOutputs"`
+	FeeTxOutputs   []int  `json:"feeTxOutputs"`
 }
 
 // newDraftTransaction will start a new draft tx
@@ -208,7 +212,7 @@ func (m *DraftTransaction) processConfigOutputs(ctx context.Context) error {
 		// this is done by checking the metadata for a key "isTokenTransaction"
 		// if the key is present and true, we will update the outputs accordingly
 
-		isTokenTransaction := m.Metadata["isTokenTransaction"].(bool)
+		_, isTokenTransaction := m.Metadata["isTokenTransaction"]
 
 		if isTokenTransaction {
 			metadataConfig := m.mapMetadata()
@@ -274,6 +278,11 @@ func (m *DraftTransaction) UpdateTokenTxOutputs(senderPaymail string, metadataCo
 		return fmt.Errorf("failed to send transfer intent: %w", err)
 	}
 
+	// Add new tx outputs to easier track balance in transactions
+	metadataConfig.FinalTxOutputs = resp.TransferIndexes
+	metadataConfig.FeeTxOutputs = resp.FeeIndexes
+	m.Metadata[TransactionConfigKey] = metadataConfig
+
 	m.updateTokenTxOutputs(metadataConfig, resp)
 
 	m.setRefID(intent, resp)
@@ -301,7 +310,7 @@ func (m *DraftTransaction) setRefID(intent Intent, vr *ValidationResponse) {
 }
 
 func (m *DraftTransaction) mapMetadata() *tokenTransactionConfig {
-	jsonBytes, err := json.Marshal(m.Metadata["tokenTransactionConfig"])
+	jsonBytes, err := json.Marshal(m.Metadata[TransactionConfigKey])
 	if err != nil {
 		panic(err)
 	}
@@ -324,7 +333,7 @@ func (m *DraftTransaction) getBanknotes(tTxCfg *tokenTransactionConfig) (string,
 		output := m.Configuration.Outputs[index]
 		receiverPaymail = output.To
 
-		inscription, err := output.findTokenInscription()
+		inscription, err := output.findBSV21TokenInscription()
 		if err != nil {
 			return "", nil, 0, err
 		}

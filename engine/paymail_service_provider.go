@@ -8,14 +8,14 @@ import (
 	"github.com/bitcoin-sv/go-paymail/beef"
 	"github.com/bitcoin-sv/go-paymail/server"
 	"github.com/bitcoin-sv/go-paymail/spv"
-	"github.com/bitcoin-sv/go-sdk/chainhash"
 	ec "github.com/bitcoin-sv/go-sdk/primitives/ec"
 	"github.com/bitcoin-sv/go-sdk/script"
-	trx "github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/go-sdk/transaction/template/p2pkh"
 	"github.com/bitcoin-sv/spv-wallet/conv"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"
+	"github.com/bsv-blockchain/go-sdk/chainhash"
+	trx "github.com/bsv-blockchain/go-sdk/transaction"
 )
 
 // PaymailDefaultServiceProvider is an interface for overriding the paymail actions in go-paymail/server

@@ -4,40 +4,76 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 
 	api "github.com/4chain-AG/gateway-overlay/pkg/open_api"
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 )
 
+// APIVersion represents current version of the overlay client API
+type APIVersion int
+
+const (
+	// APIV1 represents overlay client API v1
+	APIV1 APIVersion = iota
+	// APIV2 represents overlay client API v2
+	APIV2
+)
+
+// TransferRequest represents transfer request structure
+type TransferRequest struct {
+	FeeVouts      *[]int `json:"fee_vouts,omitempty"`
+	Hex           string `json:"hex"`
+	ReceiverID    string `json:"receiver_id"`
+	ReceiverVouts *[]int `json:"receiver_vouts,omitempty"`
+
+	// SenderID envelope
+	SenderID    string `json:"sender_id"`
+	SenderVouts *[]int `json:"sender_vouts,omitempty"`
+
+	AssetID string `json:"-"`
+}
+
+// TokenOverlayClient represents an interface of token overlay client
 type TokenOverlayClient interface {
-	VerifyAndSaveTokenTransfer(ctx context.Context, txHex *api.PutApiV1Bsv21TransferJSONRequestBody) error
+	VerifyAndSaveTokenTransfer(ctx context.Context, txHex *TransferRequest) error
 }
 
 type tokenOverlayClient struct {
-	log zerolog.Logger
-	api *api.Client
+	log        zerolog.Logger
+	api        *api.Client
+	apiVersion APIVersion
 }
 
-func NewTokenOverlayClient(logger *zerolog.Logger, overlayURL string, httpClient *resty.Client) (TokenOverlayClient, error) {
-	api, err := api.NewClient(overlayURL, api.WithHTTPClient(httpClient.GetClient()))
+// NewTokenOverlayClient returns a new token overlay client
+func NewTokenOverlayClient(logger *zerolog.Logger, overlayURL string, httpClient *resty.Client, apiVersion APIVersion) (TokenOverlayClient, error) {
+	apiClient, err := api.NewClient(overlayURL, api.WithHTTPClient(httpClient.GetClient()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &tokenOverlayClient{
-		log: logger.With().Str("tokens", "token-overlay-client").Logger(),
-		api: api,
+		log:        logger.With().Str("tokens", "token-overlay-client").Logger(),
+		api:        apiClient,
+		apiVersion: apiVersion,
 	}, nil
 }
 
-func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txHex *api.PutApiV1Bsv21TransferJSONRequestBody) error {
-	resp, err := c.api.PutApiV1Bsv21Transfer(ctx, *txHex)
+func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, transferReq *TransferRequest) error {
+	var resp *http.Response
+	var err error
+
+	if c.apiVersion == APIV1 {
+		resp, err = c.api.PutApiV1Bsv21Transfer(ctx, c.toV1TransferBody(transferReq))
+	} else {
+		resp, err = c.api.PutApiV2CoinAssetIdTransfer(ctx, transferReq.AssetID, c.toV2TransferBody(transferReq))
+	}
+
 	if err != nil {
 		c.log.Err(err).Ctx(ctx).Msg("Failed to send verify and save token transfer request")
 		return err
 	}
-
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
@@ -54,4 +90,26 @@ func (c *tokenOverlayClient) VerifyAndSaveTokenTransfer(ctx context.Context, txH
 	}
 
 	return nil
+}
+
+func (c *tokenOverlayClient) toV1TransferBody(req *TransferRequest) api.PutApiV1Bsv21TransferJSONRequestBody {
+	return api.PutApiV1Bsv21TransferJSONRequestBody{
+		Hex:           req.Hex,
+		FeeVouts:      req.FeeVouts,
+		ReceiverId:    req.ReceiverID,
+		ReceiverVouts: req.ReceiverVouts,
+		SenderId:      req.SenderID,
+		SenderVouts:   req.SenderVouts,
+	}
+}
+
+func (c *tokenOverlayClient) toV2TransferBody(req *TransferRequest) api.PutApiV2CoinAssetIdTransferJSONRequestBody {
+	return api.PutApiV2CoinAssetIdTransferJSONRequestBody{
+		Hex:           req.Hex,
+		FeeVouts:      req.FeeVouts,
+		ReceiverId:    req.ReceiverID,
+		ReceiverVouts: req.ReceiverVouts,
+		SenderId:      req.SenderID,
+		SenderVouts:   req.SenderVouts,
+	}
 }

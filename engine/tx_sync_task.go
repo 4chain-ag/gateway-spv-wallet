@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bitcoin-sv/go-sdk/transaction"
 	"github.com/bitcoin-sv/spv-wallet/conv"
 	chainerrors "github.com/bitcoin-sv/spv-wallet/engine/chain/errors"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
+	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/rs/zerolog"
 )
 

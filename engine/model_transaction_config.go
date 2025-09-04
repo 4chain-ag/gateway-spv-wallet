@@ -12,13 +12,13 @@ import (
 
 	"github.com/4chain-AG/gateway-overlay/pkg/token_engine/bsv21"
 	"github.com/bitcoin-sv/go-paymail"
-	"github.com/bitcoin-sv/go-sdk/script"
-	"github.com/bitcoin-sv/go-sdk/transaction/template/p2pkh"
 	paymailclient "github.com/bitcoin-sv/spv-wallet/engine/paymail"
 	"github.com/bitcoin-sv/spv-wallet/engine/spverrors"
 	"github.com/bitcoin-sv/spv-wallet/engine/utils"
 	"github.com/bitcoin-sv/spv-wallet/models/bsv"
 	magic "github.com/bitcoinschema/go-map"
+	"github.com/bsv-blockchain/go-sdk/script"
+	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 )
 
 // TransactionConfig is the configuration used to start a transaction
@@ -323,7 +323,7 @@ func (t *TransactionOutput) processScriptOutput() (err error) {
 	return nil
 }
 
-func (t *TransactionOutput) findTokenInscription() ([]byte, error) {
+func (t *TransactionOutput) findBSV21TokenInscription() ([]byte, error) {
 	outputScript, err := script.NewFromHex(t.Script)
 	if err != nil {
 		return nil, err
